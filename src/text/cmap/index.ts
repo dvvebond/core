@@ -1,19 +1,16 @@
 /**
- * Text extraction module for PDF documents.
+ * CMap (Character Map) module for handling international character mappings.
  *
- * Provides functionality to extract text content with position information
- * from PDF pages, and search for text patterns.
+ * Provides support for:
+ * - CJK (Chinese, Japanese, Korean) character sets
+ * - Legacy PDF encodings (WinAnsiEncoding, MacRomanEncoding, etc.)
+ * - Custom character mappings
+ *
+ * @module text/cmap
  */
 
-export { getPlainText, groupCharsIntoLines, type LineGrouperOptions } from "./line-grouper";
-export { TextExtractor, type TextExtractorOptions } from "./text-extractor";
-export { searchPage, searchPages } from "./text-search";
-export { TextState } from "./text-state";
-export * from "./types";
-
-// CMap (Character Map) support for international text
+// Core CMap types and implementation
 export {
-  // Core CMap types
   CMap,
   parseCMapData,
   parseCMapText,
@@ -28,7 +25,10 @@ export {
   type CodespaceRange,
   type DecodeResult,
   type WritingMode,
-  // CJK CMap loading
+} from "./CMap";
+
+// CJK CMap loading
+export {
   CJKCMapLoader,
   BundledCMapProvider,
   CMapLoadError,
@@ -38,7 +38,10 @@ export {
   type CMapDataProvider,
   type CMapLoadOptions,
   type PredefinedCMapInfo,
-  // Legacy encoding support
+} from "./CJKCMapLoader";
+
+// Legacy encoding support
+export {
   LegacyCMapSupport,
   createLegacyCMapSupport,
   createLegacyEncodingCMap,
@@ -48,7 +51,10 @@ export {
   type DifferenceEntry,
   type LegacyEncodingOptions,
   type LegacyEncodingType,
-  // CMap registry
+} from "./LegacyCMapSupport";
+
+// CMap registry
+export {
   CMapRegistry,
   createCMapRegistry,
   getDefaultRegistry,
@@ -56,4 +62,4 @@ export {
   type CMapRegistryEntry,
   type CMapRegistryOptions,
   type CMapRegistryStats,
-} from "./cmap";
+} from "./CMapRegistry";

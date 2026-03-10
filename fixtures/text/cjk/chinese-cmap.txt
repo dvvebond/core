@@ -1,0 +1,58 @@
+%!PS-Adobe-3.0 Resource-CMap
+%%DocumentNeededResources: ProcSet (CIDInit)
+%%IncludeResource: ProcSet (CIDInit)
+%%BeginResource: CMap (ChineseTestCMap)
+%%Title: (ChineseTestCMap)
+%%Version: 1
+%%EndComments
+
+/CIDInit /ProcSet findresource begin
+
+12 dict begin
+
+begincmap
+
+/CIDSystemInfo 3 dict dup begin
+  /Registry (Adobe) def
+  /Ordering (GB1) def
+  /Supplement 5 def
+end def
+
+/CMapName /ChineseTestCMap def
+/CMapType 1 def
+/WMode 0 def
+
+1 begincodespacerange
+<0000> <FFFF>
+endcodespacerange
+
+20 beginbfchar
+<0001> <4E2D>
+<0002> <6587>
+<0003> <5B57>
+<0004> <7B80>
+<0005> <4F53>
+<0006> <4E2D>
+<0007> <534E>
+<0008> <4EBA>
+<0009> <6C11>
+<000A> <5171>
+<000B> <548C>
+<000C> <56FD>
+<000D> <5317>
+<000E> <4EAC>
+<000F> <4E0A>
+<0010> <6D77>
+<0011> <5E7F>
+<0012> <5DDE>
+<0013> <6DF1>
+<0014> <5733>
+endbfchar
+
+endcmap
+CMapName currentdict /CMap defineresource pop
+end
+end
+
+%%EndResource
+%%EOF

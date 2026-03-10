@@ -506,3 +506,66 @@ export {
   type XRefData,
   type XRefEntry,
 } from "./parser";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Text Extraction and CMap Support
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  // Text extraction (core functions)
+  getPlainText,
+  groupCharsIntoLines,
+  TextExtractor,
+  searchPage,
+  searchPages,
+  TextState,
+  type LineGrouperOptions,
+  type TextExtractorOptions,
+  type BoundingBox,
+  type ExtractedChar,
+  type PageText,
+  type TextMatch,
+  type TextSpan,
+  // Note: ExtractTextOptions, FindTextOptions, and TextLine are already
+  // exported from other modules (worker, drawing) with the same names
+  // CMap support for international text
+  CMap,
+  parseCMapData,
+  parseCMapText,
+  CJKCMapLoader,
+  BundledCMapProvider,
+  CMapLoadError,
+  createCJKCMapLoader,
+  PREDEFINED_CMAPS,
+  LegacyCMapSupport,
+  createLegacyCMapSupport,
+  createLegacyEncodingCMap,
+  decodeLegacyByte,
+  decodeLegacyBytes,
+  glyphNameToUnicode,
+  CMapRegistry,
+  createCMapRegistry,
+  getDefaultRegistry,
+  setDefaultRegistry,
+  type ICMap,
+  type CMapOptions,
+  type CMapType,
+  type CIDSystemInfo,
+  type CharacterMapping,
+  type CharacterRangeMapping,
+  type CIDMapping,
+  type CIDRangeMapping,
+  type CodespaceRange,
+  type DecodeResult,
+  type WritingMode,
+  type CJKScript,
+  type CMapDataProvider,
+  type CMapLoadOptions,
+  type PredefinedCMapInfo,
+  type DifferenceEntry,
+  type LegacyEncodingOptions,
+  type LegacyEncodingType,
+  type CMapRegistryEntry,
+  type CMapRegistryOptions,
+  type CMapRegistryStats,
+} from "./text";
