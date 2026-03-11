@@ -10,13 +10,14 @@ import {
   buildPDFJSTextLayer,
   createPDFJSRenderer,
   createPDFJSSearchEngine,
+  createPDFResourceLoader,
   createVirtualScroller,
   createViewportManager,
   initializePDFJS,
-  loadPDFJSDocument,
   type PageDimensions,
   type PDFDocumentProxy,
   type PDFJSSearchEngine,
+  type PDFResourceLoader,
   type ViewportManager,
   type VirtualScroller,
 } from "../src";
@@ -41,6 +42,7 @@ interface DemoState {
   viewportManager: ViewportManager | null;
   virtualScroller: VirtualScroller | null;
   searchEngine: PDFJSSearchEngine | null;
+  resourceLoader: PDFResourceLoader | null;
   pageElements: Map<number, HTMLElement>;
   pageTextSpans: Map<number, TextSpanInfo[]>;
 }
@@ -54,6 +56,7 @@ const state: DemoState = {
   viewportManager: null,
   virtualScroller: null,
   searchEngine: null,
+  resourceLoader: null,
   pageElements: new Map(),
   pageTextSpans: new Map(),
 };
@@ -87,32 +90,98 @@ const elements = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Resource Loader Setup
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getResourceLoader(): PDFResourceLoader {
+  if (!state.resourceLoader) {
+    state.resourceLoader = createPDFResourceLoader({
+      workerSrc: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs",
+      maxRetries: 3,
+      timeout: 30000,
+      onProgress: (loaded, total) => {
+        if (total > 0) {
+          const percent = Math.round((loaded / total) * 100);
+          setProgress(`${percent}%`);
+        } else {
+          setProgress(`${Math.round(loaded / 1024)}KB`);
+        }
+      },
+      // Example auth refresh callback (can be customized by applications)
+      onAuthRefresh: async () => {
+        console.log("Auth refresh requested - implement your token refresh logic here");
+        // Return new auth config or null to abort
+        // return { authorization: 'Bearer new-token' };
+        return null;
+      },
+      // Example URL refresh callback for signed URLs
+      onUrlRefresh: async originalUrl => {
+        console.log("URL refresh requested for:", originalUrl);
+        // Return new URL or null to abort
+        // return getNewSignedUrl(originalUrl);
+        return null;
+      },
+    });
+  }
+  return state.resourceLoader;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // File Loading
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function loadPDF(file: File): Promise<void> {
   setStatus("Loading PDF...");
+  setProgress("");
 
   try {
     const arrayBuffer = await file.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
-    state.pdfBytes = bytes;
 
-    // Initialize PDF.js if not already done
-    // Use CDN worker for browser environment
-    await initializePDFJS({
-      workerSrc: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs",
-    });
+    // Use the resource loader
+    const loader = getResourceLoader();
+    const result = await loader.load({ type: "bytes", data: bytes });
 
-    // Load the document using PDF.js
-    state.pdfDocument = await loadPDFJSDocument(bytes);
+    state.pdfDocument = result.document;
+    state.pdfBytes = result.bytes ?? bytes;
 
     setStatus(`Loaded: ${file.name}`);
+    setProgress("");
+    emitEvent("pdf:ready", { pageCount: result.document.numPages, fileName: file.name });
     await initializeViewer();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     setStatus(`Error: ${message}`);
+    setProgress("");
     console.error("Failed to load PDF:", error);
+  }
+}
+
+/**
+ * Load a PDF from a URL using the resource loader.
+ * Supports authentication headers and 403 error recovery.
+ */
+async function loadPDFFromUrl(url: string): Promise<void> {
+  setStatus("Downloading PDF...");
+  setProgress("0%");
+
+  try {
+    const loader = getResourceLoader();
+    const result = await loader.load({ type: "url", url });
+
+    state.pdfDocument = result.document;
+    state.pdfBytes = result.bytes ?? null;
+
+    const fileName = url.split("/").pop() || "document.pdf";
+    setStatus(`Loaded: ${fileName}`);
+    setProgress("");
+    emitEvent("pdf:ready", { pageCount: result.document.numPages, fileName, sourceUrl: url });
+    await initializeViewer();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    setStatus(`Error: ${message}`);
+    setProgress("");
+    console.error("Failed to load PDF from URL:", error);
   }
 }
 
@@ -203,8 +272,11 @@ async function initializeViewer(): Promise<void> {
   state.virtualScroller.addEventListener("visiblechange", event => {
     if (event.range) {
       // Update current page
-      if (event.range.startIndex + 1 !== state.currentPage) {
-        state.currentPage = event.range.startIndex + 1;
+      const newPage = event.range.startIndex + 1;
+      if (newPage !== state.currentPage) {
+        const previousPage = state.currentPage;
+        state.currentPage = newPage;
+        emitEvent("page:changed", { previousPage, currentPage: newPage });
         updatePageControls();
       }
     }
@@ -286,6 +358,9 @@ async function initializeViewer(): Promise<void> {
 
           // Highlight search results on this page
           highlightSearchResults(pageIndex);
+
+          // Emit page rendered event
+          emitEvent("page:rendered", { pageIndex });
         } catch (err) {
           console.error(`Failed to build text layer for page ${pageIndex}:`, err);
         }
@@ -369,7 +444,13 @@ function goToPage(pageNumber: number): void {
   const pageCount = state.pdfDocument.numPages;
   const clampedPage = Math.max(1, Math.min(pageNumber, pageCount));
 
+  const previousPage = state.currentPage;
   state.currentPage = clampedPage;
+
+  // Emit page changed event if page actually changed
+  if (previousPage !== clampedPage) {
+    emitEvent("page:changed", { previousPage, currentPage: clampedPage });
+  }
 
   // Get the page layout to calculate scroll position
   const layout = state.virtualScroller.getPageLayout(clampedPage - 1);
@@ -411,7 +492,11 @@ async function setScale(scale: number): Promise<void> {
     return;
   }
 
+  const previousScale = state.scale;
   state.scale = newScale;
+
+  // Emit scale changed event
+  emitEvent("scale:changed", { previousScale, currentScale: newScale });
 
   // Update zoom select to reflect current scale
   const option = Array.from(elements.zoomSelect.options).find(
@@ -747,11 +832,82 @@ function searchPrev(): void {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Event System
+// ─────────────────────────────────────────────────────────────────────────────
+
+type EventType = "pdf:ready" | "scale:changed" | "page:rendered" | "page:changed";
+
+interface EventPayloads {
+  "pdf:ready": { pageCount: number; fileName?: string; sourceUrl?: string };
+  "scale:changed": { previousScale: number; currentScale: number };
+  "page:rendered": { pageIndex: number; renderTime?: number };
+  "page:changed": { previousPage: number; currentPage: number };
+}
+
+type EventListener<T extends EventType> = (payload: EventPayloads[T]) => void;
+
+const eventListeners = new Map<EventType, Set<EventListener<any>>>();
+
+/**
+ * Subscribe to viewer events.
+ */
+function addEventListener<T extends EventType>(type: T, listener: EventListener<T>): () => void {
+  if (!eventListeners.has(type)) {
+    eventListeners.set(type, new Set());
+  }
+  eventListeners.get(type)!.add(listener);
+
+  // Return unsubscribe function
+  return () => {
+    eventListeners.get(type)?.delete(listener);
+  };
+}
+
+/**
+ * Emit a viewer event.
+ */
+function emitEvent<T extends EventType>(type: T, payload: EventPayloads[T]): void {
+  const listeners = eventListeners.get(type);
+  if (listeners) {
+    for (const listener of listeners) {
+      try {
+        listener(payload);
+      } catch (error) {
+        console.error(`Error in event listener for ${type}:`, error);
+      }
+    }
+  }
+  // Also dispatch a custom DOM event for external listeners
+  window.dispatchEvent(new CustomEvent(`libpdf:${type}`, { detail: payload }));
+}
+
+// Set up default event logging for demo
+addEventListener("pdf:ready", payload => {
+  console.log("[Event] PDF Ready:", payload);
+});
+
+addEventListener("scale:changed", payload => {
+  console.log("[Event] Scale Changed:", payload);
+});
+
+addEventListener("page:rendered", payload => {
+  console.log("[Event] Page Rendered:", payload);
+});
+
+addEventListener("page:changed", payload => {
+  console.log("[Event] Page Changed:", payload);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // UI Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 function setStatus(message: string): void {
   elements.statusText.textContent = message;
+}
+
+function setProgress(progress: string): void {
+  elements.statusProgress.textContent = progress;
 }
 
 function enableControls(): void {

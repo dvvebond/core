@@ -778,6 +778,12 @@ export {
   searchPDFJSDocument,
   PDFJSSearchEngine,
   createPDFJSSearchEngine,
+  // Resource Loader
+  PDFResourceLoader,
+  createPDFResourceLoader,
+  loadPDFFromUrl,
+  loadPDFFromBytes,
+  PDFLoadError,
   // Types
   type PDFDocumentProxy,
   type PDFPageProxy,
@@ -793,4 +799,11 @@ export {
   type PDFJSSearchResult,
   type PDFJSSearchOptions,
   type PDFJSSearchState,
+  type PDFSource,
+  type PDFResourceLoaderOptions,
+  type PDFLoadResult,
+  type AuthConfig as PDFAuthConfig,
+  type AuthRefreshCallback,
+  type UrlRefreshCallback,
+  type ProgressCallback as PDFProgressCallback,
 } from "./viewer";
