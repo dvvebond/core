@@ -358,13 +358,15 @@ body {
   cursor: text;
 }
 
-/* Mouse text selection - purple #bfbfff */
+/* Mouse text selection - purple */
 ::selection {
-  background: #bfbfff;
+  background: rgba(140, 150, 255, 0.5);
+  color: #1a1a1a;
 }
 
 ::-moz-selection {
-  background: #bfbfff;
+  background: rgba(140, 150, 255, 0.5);
+  color: #1a1a1a;
 }
 
 /* Search highlight - green #c5d9c3 applied via .highlight class on spans */
