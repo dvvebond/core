@@ -78,7 +78,7 @@ export function analyzeFonts(resources: PdfDict | undefined, resolver?: RefResol
       continue;
     }
 
-    const fontDict = fontObj as PdfDict;
+    const fontDict = fontObj;
     const fontType = fontDict.getName("Subtype", resolver)?.name;
     const baseFont = fontDict.getName("BaseFont", resolver)?.name;
 

@@ -1098,13 +1098,168 @@ function setupEventHandlers(): void {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Feature Showcase Panel
+// ─────────────────────────────────────────────────────────────────────────────
+
+const showcaseElements = {
+  featurePanel: document.getElementById("feature-panel") as HTMLElement,
+  togglePanelBtn: document.getElementById("toggle-panel") as HTMLButtonElement,
+  urlInput: document.getElementById("url-input") as HTMLInputElement,
+  btnLoadUrl: document.getElementById("btn-load-url") as HTMLButtonElement,
+  eventLog: document.getElementById("event-log") as HTMLDivElement,
+  btnClearLog: document.getElementById("btn-clear-log") as HTMLButtonElement,
+  btnTestEvents: document.getElementById("btn-test-events") as HTMLButtonElement,
+  btnTestZoom: document.getElementById("btn-test-zoom") as HTMLButtonElement,
+  btnTestNavigation: document.getElementById("btn-test-navigation") as HTMLButtonElement,
+  statusResourceLoader: document.getElementById("status-resource-loader") as HTMLDivElement,
+};
+
+/**
+ * Log an event to the event log panel.
+ */
+function logEvent(type: string, data: Record<string, unknown>): void {
+  const log = showcaseElements.eventLog;
+  const time = new Date().toLocaleTimeString();
+
+  const entry = document.createElement("div");
+  entry.className = "event-entry";
+  entry.innerHTML = `
+    <span class="event-time">${time}</span>
+    <span class="event-type">${type}</span>
+    <span class="event-data">${JSON.stringify(data)}</span>
+  `;
+
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+/**
+ * Set up event listeners for the feature showcase panel.
+ */
+function setupShowcasePanel(): void {
+  // Toggle panel visibility
+  showcaseElements.togglePanelBtn.addEventListener("click", () => {
+    showcaseElements.featurePanel.classList.toggle("open");
+  });
+
+  // Load PDF from URL
+  showcaseElements.btnLoadUrl.addEventListener("click", async () => {
+    const url = showcaseElements.urlInput.value.trim();
+    if (url) {
+      updateResourceLoaderStatus("Loading...");
+      await loadPDFFromUrl(url);
+      updateResourceLoaderStatus("Ready");
+    }
+  });
+
+  showcaseElements.urlInput.addEventListener("keydown", async event => {
+    if (event.key === "Enter") {
+      const url = showcaseElements.urlInput.value.trim();
+      if (url) {
+        updateResourceLoaderStatus("Loading...");
+        await loadPDFFromUrl(url);
+        updateResourceLoaderStatus("Ready");
+      }
+    }
+  });
+
+  // Clear event log
+  showcaseElements.btnClearLog.addEventListener("click", () => {
+    showcaseElements.eventLog.innerHTML = "";
+    logEvent("log:cleared", {});
+  });
+
+  // Test Events button
+  showcaseElements.btnTestEvents.addEventListener("click", () => {
+    logEvent("test:manual", { message: "Manual test event triggered" });
+    emitEvent("pdf:ready", { pageCount: 0, fileName: "test-event.pdf" });
+  });
+
+  // Test Zoom button
+  showcaseElements.btnTestZoom.addEventListener("click", async () => {
+    if (state.pdfDocument) {
+      const scales = [0.5, 1, 1.5, 2, 1];
+      for (const scale of scales) {
+        await setScale(scale);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    } else {
+      logEvent("test:error", { message: "No PDF loaded - open a PDF first" });
+    }
+  });
+
+  // Test Navigation button
+  showcaseElements.btnTestNavigation.addEventListener("click", async () => {
+    if (state.pdfDocument && state.pdfDocument.numPages > 1) {
+      const pageCount = state.pdfDocument.numPages;
+      goToPage(1);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      goToPage(Math.min(3, pageCount));
+      await new Promise(resolve => setTimeout(resolve, 500));
+      goToPage(pageCount);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      goToPage(1);
+    } else {
+      logEvent("test:error", { message: "Need a multi-page PDF to test navigation" });
+    }
+  });
+
+  // Connect event system to log panel
+  addEventListener("pdf:ready", payload => {
+    logEvent("pdf:ready", payload as unknown as Record<string, unknown>);
+  });
+
+  addEventListener("scale:changed", payload => {
+    logEvent("scale:changed", payload as unknown as Record<string, unknown>);
+  });
+
+  addEventListener("page:rendered", payload => {
+    logEvent("page:rendered", payload as unknown as Record<string, unknown>);
+  });
+
+  addEventListener("page:changed", payload => {
+    logEvent("page:changed", payload as unknown as Record<string, unknown>);
+  });
+}
+
+/**
+ * Update the resource loader status indicator.
+ */
+function updateResourceLoaderStatus(status: string): void {
+  const statusEl = showcaseElements.statusResourceLoader;
+  if (statusEl) {
+    statusEl.innerHTML = `
+      <span class="status-icon">${status === "Ready" ? "●" : "◐"}</span>
+      <span>PDFResourceLoader: ${status}</span>
+    `;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Initialization
 // ─────────────────────────────────────────────────────────────────────────────
 
 function init(): void {
   setupEventHandlers();
+  setupShowcasePanel();
   disableControls();
   setStatus("Ready - Open a PDF file to begin");
+
+  // Log initial ready state
+  logEvent("app:initialized", {
+    features: [
+      "Rendering Pipeline",
+      "Coordinate Scaling",
+      "Virtual Scrolling",
+      "Text Layer",
+      "Search & Highlighting",
+      "Web Workers",
+      "CJK CMap Support",
+      "Auth & 403 Recovery",
+      "Event System",
+      "Toolbar Controls",
+    ],
+  });
 }
 
 // Start the demo

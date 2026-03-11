@@ -149,7 +149,7 @@ async function extractPageText(page: PDFPageProxy): Promise<{
       continue;
     }
 
-    const textItem = item as TextItem;
+    const textItem = item;
     if (textItem.str) {
       const charWidth = textItem.str.length > 0 ? (textItem.width || 0) / textItem.str.length : 0;
       items.push({

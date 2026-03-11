@@ -478,3 +478,255 @@ body {
     page-break-after: always;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Feature Showcase Panel
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.feature-panel {
+  position: fixed;
+  right: 0;
+  top: 60px;
+  bottom: 30px;
+  width: 320px;
+  background: #fff;
+  border-left: 1px solid #ddd;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.feature-panel.open {
+  transform: translateX(0);
+}
+
+.toggle-panel-btn {
+  position: absolute;
+  left: -80px;
+  top: 20px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  background: #2563eb;
+  border: none;
+  border-radius: 4px 0 0 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.toggle-panel-btn:hover {
+  background: #1d4ed8;
+}
+
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.panel-content h3 {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #2563eb;
+  padding-bottom: 8px;
+}
+
+.feature-section {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.feature-section:last-child {
+  border-bottom: none;
+}
+
+.feature-section h4 {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* URL Input */
+.url-input-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.url-input {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.url-input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.btn-primary {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  background: #2563eb;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #555;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-small:hover {
+  background: #e5e5e5;
+  border-color: #ccc;
+}
+
+/* Feature Status */
+.feature-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #555;
+  background: #f8f8f8;
+  border-radius: 4px;
+}
+
+.feature-status .status-icon {
+  color: #22c55e;
+}
+
+/* Event Log */
+.event-log-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.event-log {
+  height: 150px;
+  overflow-y: auto;
+  padding: 8px;
+  font-family: "SF Mono", Monaco, "Courier New", monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  background: #1e1e1e;
+  border-radius: 4px;
+  color: #d4d4d4;
+}
+
+.event-log .event-entry {
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #333;
+}
+
+.event-log .event-entry:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.event-log .event-type {
+  color: #569cd6;
+  font-weight: 500;
+}
+
+.event-log .event-time {
+  color: #6a9955;
+  margin-right: 8px;
+}
+
+.event-log .event-data {
+  color: #ce9178;
+  margin-left: 16px;
+  display: block;
+}
+
+/* Feature List */
+.feature-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 12px;
+  color: #555;
+}
+
+.feature-item .status-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #22c55e;
+  background: #dcfce7;
+  border-radius: 50%;
+}
+
+.feature-item .status-icon.active {
+  color: #22c55e;
+  background: #dcfce7;
+}
+
+.feature-item .status-icon.pending {
+  color: #eab308;
+  background: #fef9c3;
+}
+
+/* Test Actions */
+.test-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .feature-panel {
+    width: 280px;
+  }
+
+  .toggle-panel-btn {
+    left: -70px;
+  }
+}

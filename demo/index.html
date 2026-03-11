@@ -123,6 +123,93 @@
         <span id="status-text">Ready</span>
         <span id="status-progress"></span>
       </footer>
+
+      <!-- Feature Showcase Panel (collapsible) -->
+      <aside id="feature-panel" class="feature-panel">
+        <button id="toggle-panel" class="toggle-panel-btn">Features</button>
+        <div class="panel-content">
+          <h3>Feature Showcase</h3>
+
+          <!-- URL Loading -->
+          <section class="feature-section">
+            <h4>Resource Loading & Auth</h4>
+            <div class="url-input-group">
+              <input type="text" id="url-input" class="url-input" placeholder="Enter PDF URL..." />
+              <button id="btn-load-url" class="btn-primary">Load URL</button>
+            </div>
+            <div class="feature-status" id="status-resource-loader">
+              <span class="status-icon">●</span>
+              <span>PDFResourceLoader: Ready</span>
+            </div>
+          </section>
+
+          <!-- Event Log -->
+          <section class="feature-section">
+            <h4>Event System</h4>
+            <div class="event-log-container">
+              <div id="event-log" class="event-log"></div>
+              <button id="btn-clear-log" class="btn-small">Clear Log</button>
+            </div>
+          </section>
+
+          <!-- Feature Status -->
+          <section class="feature-section">
+            <h4>Implemented Features</h4>
+            <ul class="feature-list">
+              <li class="feature-item">
+                <span class="status-icon active">✓</span>
+                <span>Rendering Pipeline (PDF.js + Canvas)</span>
+              </li>
+              <li class="feature-item">
+                <span class="status-icon active">✓</span>
+                <span>Coordinate Scaling & Zoom</span>
+              </li>
+              <li class="feature-item">
+                <span class="status-icon active">✓</span>
+                <span>Virtualized Page Window</span>
+              </li>
+              <li class="feature-item">
+                <span class="status-icon active">✓</span>
+                <span>DOM Text Layer (Selection)</span>
+              </li>
+              <li class="feature-item">
+                <span class="status-icon active">✓</span>
+                <span>Search with Highlighting</span>
+              </li>
+              <li class="feature-item">
+                <span class="status-icon active">✓</span>
+                <span>Web Worker Architecture</span>
+              </li>
+              <li class="feature-item">
+                <span class="status-icon active">✓</span>
+                <span>CJK CMap Support</span>
+              </li>
+              <li class="feature-item">
+                <span class="status-icon active">✓</span>
+                <span>Auth & 403 Recovery</span>
+              </li>
+              <li class="feature-item">
+                <span class="status-icon active">✓</span>
+                <span>Event Hooks System</span>
+              </li>
+              <li class="feature-item">
+                <span class="status-icon active">✓</span>
+                <span>Toolbar & UI Controls</span>
+              </li>
+            </ul>
+          </section>
+
+          <!-- Test Actions -->
+          <section class="feature-section">
+            <h4>Test Actions</h4>
+            <div class="test-actions">
+              <button id="btn-test-events" class="btn-small">Test Events</button>
+              <button id="btn-test-zoom" class="btn-small">Test Zoom</button>
+              <button id="btn-test-navigation" class="btn-small">Test Navigation</button>
+            </div>
+          </section>
+        </div>
+      </aside>
     </div>
 
     <script type="module" src="demo.ts"></script>

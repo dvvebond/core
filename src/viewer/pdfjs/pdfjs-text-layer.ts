@@ -120,7 +120,7 @@ export async function buildPDFJSTextLayer(
         continue;
       }
 
-      const textItem = item as TextItem;
+      const textItem = item;
 
       // Skip empty strings
       if (!textItem.str) {
