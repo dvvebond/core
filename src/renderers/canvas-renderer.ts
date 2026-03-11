@@ -231,6 +231,9 @@ export class CanvasRenderer implements BaseRenderer {
   private _headlessWidth = 0;
   private _headlessHeight = 0;
 
+  /** Current page height for coordinate transformation (PDF uses bottom-left origin) */
+  private _pageHeight = 0;
+
   /** Graphics state stack for save/restore operations */
   private _graphicsStateStack: GraphicsState[] = [];
 
@@ -460,6 +463,10 @@ export class CanvasRenderer implements BaseRenderer {
               // Parse content stream to operators
               const operators = this.parseContentToOperators(contentBytes);
               console.log(`[DEBUG] Parsed ${operators.length} operators from content stream`);
+
+              // Store the page height for coordinate transformation
+              // PDF uses bottom-left origin, canvas uses top-left
+              this._pageHeight = canvas.height / viewport.scale;
 
               // Reset graphics state before rendering
               this.resetGraphicsState();
@@ -1271,55 +1278,75 @@ export class CanvasRenderer implements BaseRenderer {
     // Apply text matrix and CTM
     this._context.save();
 
-    // Get the combined transformation
-    const combinedMatrix = this._graphicsState.ctm.multiply(this._textState.textMatrix);
+    // Get the combined transformation matrix
+    const tm = this._textState.textMatrix;
+    const ctm = this._graphicsState.ctm;
 
-    // Apply transformation
-    this._context.setTransform(
-      combinedMatrix.a,
-      combinedMatrix.b,
-      combinedMatrix.c,
-      combinedMatrix.d,
-      combinedMatrix.e,
-      combinedMatrix.f,
-    );
+    // Calculate the position in PDF coordinates
+    const pdfX = tm.e;
+    const pdfY = tm.f;
 
-    // Apply text rise
-    if (textRise !== 0) {
-      this._context.translate(0, textRise);
-    }
+    // Transform to canvas coordinates (flip Y axis)
+    // PDF: origin at bottom-left, Y increases upward
+    // Canvas: origin at top-left, Y increases downward
+    const canvasX = ctm.a * pdfX + ctm.c * pdfY + ctm.e;
+    const canvasY = this._pageHeight - (ctm.b * pdfX + ctm.d * pdfY + ctm.f);
+
+    // Calculate effective font size considering all transformations
+    const effectiveFontSize = Math.abs(fontSize * tm.d * ctm.d);
+
+    // Set up the context for text rendering
+    this._context.font = `${effectiveFontSize}px ${mapPdfFontToCanvas(this._graphicsState.fontName)}`;
+    this._context.fillStyle = this._graphicsState.fillColor;
+    this._context.strokeStyle = this._graphicsState.strokeColor;
 
     // Apply horizontal scaling
     if (horizontalScale !== 100) {
+      this._context.save();
+      this._context.translate(canvasX, canvasY);
       this._context.scale(horizontalScale / 100, 1);
+      this._context.translate(-canvasX, -canvasY);
     }
 
+    // Apply text rise (vertical offset)
+    const adjustedY = canvasY - textRise * ctm.d;
+
     // Render based on mode
-    let x = 0;
+    let xOffset = 0;
     for (const char of text) {
+      const drawX = canvasX + xOffset;
+
       if (textRenderMode === TextRenderMode.Fill || textRenderMode === TextRenderMode.FillStroke) {
-        this._context.fillText(char, x, 0);
+        this._context.fillText(char, drawX, adjustedY);
       }
       if (
         textRenderMode === TextRenderMode.Stroke ||
         textRenderMode === TextRenderMode.FillStroke
       ) {
-        this._context.strokeText(char, x, 0);
+        this._context.strokeText(char, drawX, adjustedY);
       }
 
       // Advance position
       const charWidth = this._context.measureText(char).width;
-      x += charWidth + charSpacing;
+      xOffset += charWidth + charSpacing * ctm.a;
       if (char === " ") {
-        x += wordSpacing;
+        xOffset += wordSpacing * ctm.a;
       }
+    }
+
+    if (horizontalScale !== 100) {
+      this._context.restore();
     }
 
     this._context.restore();
 
-    // Update text matrix (advance position)
-    const totalWidth = x * (horizontalScale / 100);
-    this._textState.textMatrix = this._textState.textMatrix.translate(totalWidth / fontSize, 0);
+    // Update text matrix (advance position in text space units)
+    // xOffset is in canvas pixels, need to convert back to text space
+    const textSpaceAdvance = xOffset / (effectiveFontSize / fontSize);
+    this._textState.textMatrix = this._textState.textMatrix.translate(
+      textSpaceAdvance / fontSize,
+      0,
+    );
   }
 
   /**

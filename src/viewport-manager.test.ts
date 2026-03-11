@@ -65,38 +65,40 @@ function createMockRenderer(renderDelay = 10): BaseRenderer {
         };
       },
     ),
-    render: vi.fn((pageIndex: number, viewport: Viewport): RenderTask => {
-      let cancelled = false;
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    render: vi.fn(
+      (pageIndex: number, viewport: Viewport, _contentBytes?: Uint8Array | null): RenderTask => {
+        let cancelled = false;
+        let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-      const promise = new Promise<RenderResult>((resolve, reject) => {
-        // Simulate async rendering
-        timeoutId = setTimeout(() => {
-          if (cancelled) {
-            reject(new Error("Render cancelled"));
-          } else {
-            resolve({
-              width: viewport.width,
-              height: viewport.height,
-              element: { pageIndex, canvas: true },
-            });
-          }
-        }, renderDelay);
-      });
+        const promise = new Promise<RenderResult>((resolve, reject) => {
+          // Simulate async rendering
+          timeoutId = setTimeout(() => {
+            if (cancelled) {
+              reject(new Error("Render cancelled"));
+            } else {
+              resolve({
+                width: viewport.width,
+                height: viewport.height,
+                element: { pageIndex, canvas: true },
+              });
+            }
+          }, renderDelay);
+        });
 
-      return {
-        promise,
-        cancel: () => {
-          cancelled = true;
-          if (timeoutId) {
-            clearTimeout(timeoutId);
-          }
-        },
-        get cancelled() {
-          return cancelled;
-        },
-      };
-    }),
+        return {
+          promise,
+          cancel: () => {
+            cancelled = true;
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+            }
+          },
+          get cancelled() {
+            return cancelled;
+          },
+        };
+      },
+    ),
     destroy: vi.fn(),
   };
 }
