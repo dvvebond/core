@@ -490,7 +490,7 @@ export {
 
 export {
   AuthHandler,
-  AuthenticationError,
+  AuthenticationError as AuthHandlerAuthenticationError,
   createTokenProvider,
   type AuthenticatedResponse,
   type AuthHandlerOptions,
@@ -598,7 +598,7 @@ export {
 
 export {
   // ResourceLoader
-  AuthenticationError,
+  AuthenticationError as ResourceLoaderAuthenticationError,
   createResourceLoader,
   FileReadError,
   InvalidFileTypeError,
