@@ -185,8 +185,8 @@ async function initializeViewer(): Promise<void> {
   enableControls();
   updatePageControls();
 
-  // Initial render of visible pages
-  state.virtualScroller.update();
+  // Initialize viewport manager (loads page dimensions and triggers initial render)
+  await state.viewportManager.initialize();
 }
 
 function createPageSource() {
