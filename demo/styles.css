@@ -369,17 +369,17 @@ body {
   color: transparent;
 }
 
-/* Search highlight - green background with visible text */
+/* Search highlight - green background blended with canvas */
 .text-layer .highlight {
   background-color: #c5d9c3;
-  color: #000;
   border-radius: 3px;
+  mix-blend-mode: multiply;
 }
 
 /* Current/selected search result - slightly darker */
 .text-layer .highlight.selected {
   background-color: #a8c9a5;
-  color: #000;
+  mix-blend-mode: multiply;
 }
 
 
