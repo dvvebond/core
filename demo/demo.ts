@@ -364,7 +364,18 @@ function goToPage(pageNumber: number): void {
   const clampedPage = Math.max(1, Math.min(pageNumber, pageCount));
 
   state.currentPage = clampedPage;
-  state.virtualScroller.scrollToPage(clampedPage - 1);
+
+  // Get the page layout to calculate scroll position
+  const layout = state.virtualScroller.getPageLayout(clampedPage - 1);
+  if (layout) {
+    // Scroll the DOM element to the page position with smooth animation
+    elements.viewer.scrollTo({
+      top: Math.max(0, layout.top - 20), // Small offset from top
+      left: Math.max(0, layout.left - (elements.viewer.clientWidth - layout.width) / 2),
+      behavior: "smooth",
+    });
+  }
+
   updatePageControls();
 }
 
@@ -388,8 +399,13 @@ function updatePageControls(): void {
 // Zoom
 // ─────────────────────────────────────────────────────────────────────────────
 
-function setScale(scale: number): void {
-  state.scale = Math.max(0.1, Math.min(5, scale));
+async function setScale(scale: number): Promise<void> {
+  const newScale = Math.max(0.1, Math.min(5, scale));
+  if (newScale === state.scale) {
+    return;
+  }
+
+  state.scale = newScale;
 
   // Update zoom select to reflect current scale
   const option = Array.from(elements.zoomSelect.options).find(
@@ -412,18 +428,44 @@ function setScale(scale: number): void {
     elements.zoomSelect.value = "custom";
   }
 
-  // Re-render with new scale
+  // Update virtual scroller with new scale
   if (state.virtualScroller) {
+    // Store current scroll position ratio to maintain position after resize
+    const scrollRatioY = elements.viewer.scrollTop / (elements.viewer.scrollHeight || 1);
+    const scrollRatioX = elements.viewer.scrollLeft / (elements.viewer.scrollWidth || 1);
+
     state.virtualScroller.setScale(state.scale);
+
+    // Update content container size
+    const contentContainer = (state as any).contentContainer as HTMLElement;
+    if (contentContainer) {
+      contentContainer.style.width = `${state.virtualScroller.totalWidth}px`;
+      contentContainer.style.height = `${state.virtualScroller.totalHeight}px`;
+    }
+
+    // Clear existing page elements and re-render
+    for (const [pageIndex, container] of state.pageElements) {
+      container.remove();
+    }
+    state.pageElements.clear();
+
+    // Restore scroll position proportionally
+    elements.viewer.scrollTop = scrollRatioY * state.virtualScroller.totalHeight;
+    elements.viewer.scrollLeft = scrollRatioX * state.virtualScroller.totalWidth;
+
+    // Trigger re-render of visible pages
+    if (state.viewportManager) {
+      await state.viewportManager.invalidateVisiblePages();
+    }
   }
 }
 
-function zoomIn(): void {
-  setScale(state.scale * 1.25);
+async function zoomIn(): Promise<void> {
+  await setScale(state.scale * 1.25);
 }
 
-function zoomOut(): void {
-  setScale(state.scale / 1.25);
+async function zoomOut(): Promise<void> {
+  await setScale(state.scale / 1.25);
 }
 
 async function fitWidth(): Promise<void> {
@@ -435,7 +477,7 @@ async function fitWidth(): Promise<void> {
   const viewport = page.getViewport({ scale: 1 });
   const containerWidth = elements.viewer.clientWidth - 40; // Account for padding
   const newScale = containerWidth / viewport.width;
-  setScale(newScale);
+  await setScale(newScale);
 }
 
 async function fitPage(): Promise<void> {
@@ -450,7 +492,7 @@ async function fitPage(): Promise<void> {
 
   const scaleX = containerWidth / viewport.width;
   const scaleY = containerHeight / viewport.height;
-  setScale(Math.min(scaleX, scaleY));
+  await setScale(Math.min(scaleX, scaleY));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -718,8 +760,8 @@ function setupEventHandlers(): void {
   });
 
   // Zoom
-  elements.btnZoomOut.addEventListener("click", zoomOut);
-  elements.btnZoomIn.addEventListener("click", zoomIn);
+  elements.btnZoomOut.addEventListener("click", () => void zoomOut());
+  elements.btnZoomIn.addEventListener("click", () => void zoomIn());
 
   elements.zoomSelect.addEventListener("change", () => {
     const value = elements.zoomSelect.value;
@@ -730,7 +772,7 @@ function setupEventHandlers(): void {
     } else {
       const scale = parseFloat(value);
       if (!isNaN(scale)) {
-        setScale(scale);
+        void setScale(scale);
       }
     }
   });
@@ -794,13 +836,13 @@ function setupEventHandlers(): void {
       case "+":
       case "=":
         if (event.ctrlKey || event.metaKey) {
-          zoomIn();
+          void zoomIn();
           event.preventDefault();
         }
         break;
       case "-":
         if (event.ctrlKey || event.metaKey) {
-          zoomOut();
+          void zoomOut();
           event.preventDefault();
         }
         break;
