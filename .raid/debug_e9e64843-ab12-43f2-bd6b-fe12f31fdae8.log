@@ -1,0 +1,2 @@
+[2026-03-11T10:02:02+01:00] DEBUG: Added frontend search exports to src/index.ts - createSearchEngine, SearchEngine, SearchResult, TextProvider now available from main entry point
+[2026-03-11T10:02:32+01:00] DEBUG: Typecheck ran - frontend search exports fix verified. No import errors for createSearchEngine, SearchEngine, SearchResult, or TextProvider from '../src'. Remaining errors are DOM-related config issues unrelated to the export bug.
