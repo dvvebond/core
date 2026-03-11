@@ -6,7 +6,8 @@
  * and compatibility across browsers.
  */
 
-import { Op, type Operator } from "#src/content/operators";
+import { Op, Operator } from "#src/content/operators";
+import { ContentStreamParser } from "#src/content/parsing";
 import {
   CoordinateTransformer,
   type Point2D,
@@ -14,10 +15,10 @@ import {
   type RotationAngle,
 } from "#src/coordinate-transformer";
 import { Matrix } from "#src/helpers/matrix";
-import type { PdfArray } from "#src/objects/pdf-array";
-import type { PdfName } from "#src/objects/pdf-name";
-import type { PdfNumber } from "#src/objects/pdf-number";
-import type { PdfString } from "#src/objects/pdf-string";
+import { PdfArray } from "#src/objects/pdf-array";
+import { PdfName } from "#src/objects/pdf-name";
+import { PdfNumber } from "#src/objects/pdf-number";
+import { PdfString } from "#src/objects/pdf-string";
 
 import type {
   BaseRenderer,
@@ -361,23 +362,22 @@ export class CanvasRenderer implements BaseRenderer {
     };
   }
 
-  render(pageIndex: number, viewport: Viewport): RenderTask {
+  render(pageIndex: number, viewport: Viewport, contentBytes?: Uint8Array | null): RenderTask {
     try {
       require("fs").appendFileSync(
         "/Volumes/dvve/Documents/TheZig/core2/core/.raid/debug_564ac3ff-9ce6-451b-83a8-ab68d91f9ac1.log",
-        `${new Date().toISOString()} CanvasRenderer.render() called with pageIndex=${pageIndex}, viewport.width=${viewport.width}, viewport.height=${viewport.height}\n`,
+        `${new Date().toISOString()} CanvasRenderer.render() pageIndex=${pageIndex}, hasContent=${!!contentBytes}, contentLength=${contentBytes?.length ?? 0}\n`,
       );
     } catch {
-      console.log(`[DEBUG] CanvasRenderer.render() pageIndex=${pageIndex}`);
+      console.log(
+        `[DEBUG] CanvasRenderer.render() pageIndex=${pageIndex}, hasContent=${!!contentBytes}`,
+      );
     } // [DEBUG_INSTRUMENTATION]
     if (!this._initialized) {
       throw new Error("Renderer must be initialized before rendering");
     }
 
     let cancelled = false;
-
-    // Store pageIndex for potential future use - NOTE: This is the root cause - pageIndex is ignored and no PDF content is rendered
-    void pageIndex;
 
     if (this._headless) {
       // Headless mode - just return dimensions
@@ -434,11 +434,6 @@ export class CanvasRenderer implements BaseRenderer {
           context.fillStyle = options.background ?? "#ffffff";
           context.fillRect(0, 0, canvas.width, canvas.height);
 
-          // Draw a light border so the page boundaries are visible (temporary until content rendering is implemented)
-          context.strokeStyle = "#cccccc";
-          context.lineWidth = 1;
-          context.strokeRect(0.5, 0.5, canvas.width - 1, canvas.height - 1);
-
           // Apply viewport transformation
           context.save();
 
@@ -459,34 +454,48 @@ export class CanvasRenderer implements BaseRenderer {
           // Apply offset
           context.translate(viewport.offsetX, viewport.offsetY);
 
-          // Note: Actual PDF content rendering will be implemented in future tasks.
-          // This foundation sets up the canvas transformation pipeline.
-          // The page content stream operators will be executed here.
-          // TODO: Implement actual PDF content rendering by calling executeOperators() with page content
+          // Render PDF content if we have content bytes
+          if (contentBytes && contentBytes.length > 0) {
+            try {
+              // Parse content stream to operators
+              const operators = this.parseContentToOperators(contentBytes);
+              console.log(`[DEBUG] Parsed ${operators.length} operators from content stream`);
 
-          // Draw placeholder text to indicate page is recognized but content rendering is not implemented
-          context.restore(); // Restore to draw text in screen coordinates
-          context.save();
-          context.fillStyle = "#999999";
-          context.font = "14px sans-serif";
-          context.textAlign = "center";
-          context.textBaseline = "middle";
-          context.fillText(`Page ${pageIndex + 1}`, canvas.width / 2, canvas.height / 2 - 10);
-          context.font = "11px sans-serif";
-          context.fillText(
-            "(PDF content rendering not yet implemented)",
-            canvas.width / 2,
-            canvas.height / 2 + 10,
-          );
+              // Reset graphics state before rendering
+              this.resetGraphicsState();
+
+              // Execute all operators to render the page
+              this.executeOperators(operators);
+            } catch (err) {
+              console.error(`[DEBUG] Error rendering content:`, err);
+              // Fall through to show placeholder on error
+            }
+          } else {
+            // No content bytes - show placeholder
+            context.restore();
+            context.save();
+            context.fillStyle = "#999999";
+            context.font = "14px sans-serif";
+            context.textAlign = "center";
+            context.textBaseline = "middle";
+            context.fillText(`Page ${pageIndex + 1}`, canvas.width / 2, canvas.height / 2 - 10);
+            context.font = "11px sans-serif";
+            context.fillText(
+              "(No content bytes provided)",
+              canvas.width / 2,
+              canvas.height / 2 + 10,
+            );
+          }
+
           context.restore();
 
           try {
             require("fs").appendFileSync(
               "/Volumes/dvve/Documents/TheZig/core2/core/.raid/debug_564ac3ff-9ce6-451b-83a8-ab68d91f9ac1.log",
-              `${new Date().toISOString()} CanvasRenderer.render() STUB: blank canvas ${canvas.width}x${canvas.height}\n`,
+              `${new Date().toISOString()} CanvasRenderer.render() done, canvas ${canvas.width}x${canvas.height}\n`,
             );
           } catch {
-            console.log(`[DEBUG] STUB: blank canvas ${canvas.width}x${canvas.height}`);
+            console.log(`[DEBUG] render done, canvas ${canvas.width}x${canvas.height}`);
           } // [DEBUG_INSTRUMENTATION]
 
           resolve({
@@ -1581,6 +1590,55 @@ export class CanvasRenderer implements BaseRenderer {
     for (const operator of operators) {
       this.executeOperator(operator);
     }
+  }
+
+  /**
+   * Parse content stream bytes into Operator objects.
+   * This converts raw PDF content stream bytes into executable operators.
+   */
+  private parseContentToOperators(bytes: Uint8Array): Operator[] {
+    const parser = new ContentStreamParser(bytes);
+    const { operations } = parser.parse();
+
+    return operations.map(op => {
+      if ("operands" in op) {
+        const operands: (number | string | PdfName | PdfString | PdfArray)[] = [];
+        for (const token of op.operands) {
+          switch (token.type) {
+            case "number":
+              operands.push(token.value);
+              break;
+            case "name":
+              operands.push(PdfName.of(token.value));
+              break;
+            case "string":
+              operands.push(PdfString.fromBytes(token.value));
+              break;
+            case "array": {
+              // Convert array tokens to PdfArray
+              const arr = new PdfArray();
+              for (const item of token.items) {
+                if (item.type === "number") {
+                  arr.push(PdfNumber.of(item.value));
+                } else if (item.type === "string") {
+                  arr.push(PdfString.fromBytes(item.value));
+                } else if (item.type === "name") {
+                  arr.push(PdfName.of(item.value));
+                }
+              }
+              operands.push(arr);
+              break;
+            }
+            // Skip other token types (dict, bool, null) for now
+            default:
+              break;
+          }
+        }
+        return Operator.of(op.operator as Op, ...operands);
+      }
+      // Inline image - skip for now
+      return Operator.of(Op.EndPath);
+    });
   }
 }
 

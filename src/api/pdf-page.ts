@@ -2865,8 +2865,9 @@ export class PDFPage {
 
   /**
    * Get the concatenated content stream bytes.
+   * These bytes contain the PDF operators that define the page content.
    */
-  private getContentBytes(): Uint8Array {
+  getContentBytes(): Uint8Array {
     const contents = this.dict.get("Contents", this.ctx.resolve.bind(this.ctx));
 
     if (!contents) {

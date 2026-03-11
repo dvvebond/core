@@ -161,9 +161,10 @@ export interface BaseRenderer {
    *
    * @param pageIndex - The 0-indexed page number
    * @param viewport - The viewport to render into
+   * @param contentBytes - Optional raw content stream bytes to render
    * @returns A render task that can be awaited or cancelled
    */
-  render(pageIndex: number, viewport: Viewport): RenderTask;
+  render(pageIndex: number, viewport: Viewport, contentBytes?: Uint8Array | null): RenderTask;
 
   /**
    * Clean up resources used by the renderer.

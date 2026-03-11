@@ -255,6 +255,20 @@ function createPageSource() {
       const page = state.pdf?.getPage(pageIndex);
       return page?.rotate ?? 0;
     },
+    getPageContentBytes: async (pageIndex: number): Promise<Uint8Array | null> => {
+      const page = state.pdf?.getPage(pageIndex);
+      if (!page) {
+        return null;
+      }
+      try {
+        const bytes = page.getContentBytes();
+        console.log(`[DEBUG] getPageContentBytes(${pageIndex}): ${bytes.length} bytes`);
+        return bytes;
+      } catch (err) {
+        console.error(`[DEBUG] Error getting content bytes for page ${pageIndex}:`, err);
+        return null;
+      }
+    },
     createPageElement: (pageIndex: number): HTMLElement => {
       const container = document.createElement("div");
       container.className = "page-container";

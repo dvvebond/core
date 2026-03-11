@@ -151,6 +151,13 @@ export interface PageSource {
    * Get the rotation of a page in degrees (0, 90, 180, 270).
    */
   getPageRotation(pageIndex: number): Promise<number>;
+
+  /**
+   * Get the raw content stream bytes for a page.
+   * These bytes contain PDF operators that define the page content.
+   * Optional - if not provided, pages will render as blank.
+   */
+  getPageContentBytes?(pageIndex: number): Promise<Uint8Array | null>;
 }
 
 /**
@@ -711,16 +718,24 @@ export class ViewportManager {
 
       page.viewport = viewport;
 
+      // Get page content bytes if available
+      let contentBytes: Uint8Array | null = null;
+      if (this._pageSource.getPageContentBytes) {
+        contentBytes = await this._pageSource.getPageContentBytes(pageIndex);
+      }
+
       // Start render
       try {
         require("fs").appendFileSync(
           "/Volumes/dvve/Documents/TheZig/core2/core/.raid/debug_564ac3ff-9ce6-451b-83a8-ab68d91f9ac1.log",
-          `${new Date().toISOString()} ViewportManager.startPageRender() pageIndex=${pageIndex}\n`,
+          `${new Date().toISOString()} ViewportManager.startPageRender() pageIndex=${pageIndex}, hasContent=${!!contentBytes}\n`,
         );
       } catch {
-        console.log(`[DEBUG] ViewportManager.startPageRender() pageIndex=${pageIndex}`);
+        console.log(
+          `[DEBUG] ViewportManager.startPageRender() pageIndex=${pageIndex}, hasContent=${!!contentBytes}`,
+        );
       } // [DEBUG_INSTRUMENTATION]
-      const renderTask = this._renderer.render(pageIndex, viewport);
+      const renderTask = this._renderer.render(pageIndex, viewport, contentBytes);
       page.renderTask = renderTask;
 
       // Wait for completion
