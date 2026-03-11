@@ -164,7 +164,7 @@ export class VirtualScrollContainer {
     if (options.useDefaultPools !== false) {
       const defaultConfigs = createDefaultPoolConfigs();
       for (const [type, config] of defaultConfigs) {
-        this._recycler.registerPool(type as RecyclableElementType, config);
+        this._recycler.registerPool(type, config);
       }
     }
 

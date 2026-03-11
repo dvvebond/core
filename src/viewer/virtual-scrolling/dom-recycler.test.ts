@@ -680,7 +680,7 @@ describe("DOMRecycler", () => {
       const recycler = new DOMRecycler();
 
       for (const [type, config] of configs) {
-        recycler.registerPool(type as RecyclableElementType, config);
+        recycler.registerPool(type, config);
       }
 
       const pageEl = recycler.acquire("pageContainer", 0);
@@ -702,7 +702,7 @@ describe("DOMRecycler", () => {
       const recycler = new DOMRecycler();
 
       for (const [type, config] of configs) {
-        recycler.registerPool(type as RecyclableElementType, config);
+        recycler.registerPool(type, config);
       }
 
       const pageEl = recycler.acquire("pageContainer", 0) as unknown as MockElement;

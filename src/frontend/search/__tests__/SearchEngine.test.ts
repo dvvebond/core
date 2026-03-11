@@ -814,7 +814,7 @@ describe("types and helpers", () => {
 
       expect(event.type).toBe("search-start");
       expect(event.timestamp).toBeGreaterThan(0);
-      expect((event as SearchStartEvent).query).toBe("test");
+      expect(event.query).toBe("test");
     });
   });
 });

@@ -521,7 +521,7 @@ export class ParsingWorkerHost {
         5000,
       );
 
-      return response.status === "success" && response.data?.wasCancelled === true;
+      return response.status === "success" && response.data?.wasCancelled;
     } catch {
       return false;
     }

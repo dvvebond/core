@@ -140,3 +140,46 @@ export {
   type LoadedFont,
   type FontStyle,
 } from "./FontManager.ts";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rendering Type Detection
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  RenderingType,
+  createDefaultAnalysisResult,
+  createDefaultRenderingHints,
+  type ContentAnalysisResult,
+  type ContentAnalyzerOptions,
+  type ContentComposition,
+  type FontResourceInfo,
+  type GraphicsCharacteristics,
+  type ImageCharacteristics,
+  type PageResources,
+  type RenderingHints,
+  type TextCharacteristics,
+  type XObjectResourceInfo,
+} from "./rendering-types.ts";
+
+export { ContentAnalyzer, analyzeContent, createContentAnalyzer } from "./content-analyzer.ts";
+
+export {
+  RenderingStrategySelector,
+  createRenderingStrategySelector,
+  getDefaultStrategy,
+  getStrategyForType,
+  type CachingStrategy,
+  type RenderingPriority,
+  type RenderingStrategy,
+  type RenderingStrategySelectorOptions,
+} from "./rendering-strategy.ts";
+
+export {
+  IntelligentRenderer,
+  createIntelligentRenderer,
+  detectContentType,
+  quickAnalyze,
+  type IntelligentRenderResult,
+  type IntelligentRendererOptions,
+  type IntelligentRenderTask,
+} from "./renderer.ts";
