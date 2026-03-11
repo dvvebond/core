@@ -216,6 +216,12 @@ export {
   searchDocument as searchPDFJSDocument,
   PDFJSSearchEngine,
   createPDFJSSearchEngine,
+  // Resource Loader
+  PDFResourceLoader,
+  createPDFResourceLoader,
+  loadPDFFromUrl,
+  loadPDFFromBytes,
+  PDFLoadError,
   // Types
   type PDFDocumentProxy,
   type PDFPageProxy,
@@ -231,4 +237,11 @@ export {
   type PDFJSSearchResult,
   type PDFJSSearchOptions,
   type PDFJSSearchState,
+  type PDFSource,
+  type AuthConfig,
+  type AuthRefreshCallback,
+  type UrlRefreshCallback,
+  type ProgressCallback,
+  type PDFResourceLoaderOptions,
+  type PDFLoadResult,
 } from "./pdfjs";

@@ -94,3 +94,22 @@ export {
   type PDFJSSearchState,
   type SearchResultBounds,
 } from "./pdfjs-search";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PDF Resource Loader
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  PDFResourceLoader,
+  createPDFResourceLoader,
+  loadPDFFromUrl,
+  loadPDFFromBytes,
+  PDFLoadError,
+  type PDFSource,
+  type AuthConfig,
+  type AuthRefreshCallback,
+  type UrlRefreshCallback,
+  type ProgressCallback,
+  type PDFResourceLoaderOptions,
+  type PDFLoadResult,
+} from "./pdf-resource-loader";
