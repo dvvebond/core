@@ -359,18 +359,17 @@ body {
 }
 
 /* Mouse text selection - purple #bfbfff */
+/* Show the actual text when selected so the highlight appears behind it */
 .text-layer > span::selection,
 .text-layer > div::selection {
   background: #bfbfff;
-  color: transparent;
-  mix-blend-mode: multiply;
+  color: #000;
 }
 
 .text-layer > span::-moz-selection,
 .text-layer > div::-moz-selection {
   background: #bfbfff;
-  color: transparent;
-  mix-blend-mode: multiply;
+  color: #000;
 }
 
 /* Search highlight - green #c5d9c3 applied via .highlight class on spans */
