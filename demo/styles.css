@@ -376,13 +376,14 @@ body {
 
 .search-highlight {
   position: absolute;
-  background: #c5d9c3;
+  background: rgba(197, 217, 195, 0.5);
   border-radius: 3px;
   pointer-events: none;
+  mix-blend-mode: multiply;
 }
 
 .search-highlight.current {
-  background: #a8d4a5;
+  background: rgba(168, 212, 165, 0.6);
   z-index: 10;
 }
 
