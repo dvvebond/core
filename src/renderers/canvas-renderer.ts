@@ -1388,26 +1388,41 @@ export class CanvasRenderer implements TypeAwareRenderer {
     // Apply text matrix and CTM
     this._context.save();
 
-    // Get the combined transformation matrix
+    // Get the text matrix and CTM
     const tm = this._textState.textMatrix;
     const ctm = this._graphicsState.ctm;
 
     // Calculate the position in PDF coordinates
-    // The text position is given by the text matrix translation (tm.e, tm.f)
-    // In most simple cases, CTM is identity, so we just use tm.e and tm.f directly
     const pdfX = tm.e;
     const pdfY = tm.f;
 
-    // Calculate effective font size considering all transformations
-    const effectiveFontSize = Math.abs(fontSize * tm.d * ctm.d);
+    // Calculate effective font size from the text matrix vertical scale
+    const effectiveFontSize = Math.abs(fontSize * tm.d);
 
-    // The canvas has a global Y-flip transformation applied (scale(1, -1)).
-    // This means text would appear upside-down and mirrored.
-    // To render text correctly, we need to:
-    // 1. Move to the text position in PDF space
-    // 2. Apply a local flip to counteract the global flip
+    // The canvas has a global Y-flip transformation applied via:
+    //   translate(0, pageHeight) then scale(1, -1)
+    // This converts PDF coordinates (origin bottom-left, Y up) to canvas.
+    //
+    // For text, the global flip makes glyphs appear upside-down.
+    // We need to:
+    // 1. Move to text position
+    // 2. Apply text matrix scaling/rotation
+    // 3. Flip Y axis locally so text renders right-side up
     this._context.translate(pdfX, pdfY);
-    this._context.scale(1, -1); // Flip text so it appears right-side up
+
+    // Apply the text matrix 2x2 part (a, b, c, d) for rotation/scaling
+    // We need to handle the sign of tm.d to preserve text orientation
+    // A positive tm.d means normal text, negative means pre-flipped
+    const scaleX = tm.a;
+    const shearX = tm.b;
+    const shearY = tm.c;
+    const scaleY = tm.d;
+
+    // Apply text matrix transformation, then flip to counteract global flip
+    // The key insight: we want text to appear right-side up after the global flip
+    // Global flip: scale(1, -1) makes Y go up on screen
+    // We apply: scale(1, -1) locally to flip text glyphs back to normal
+    this._context.transform(scaleX, shearX, -shearY, -scaleY, 0, 0);
 
     // Set up the context for text rendering
     this._context.font = `${effectiveFontSize}px ${mapPdfFontToCanvas(this._graphicsState.fontName)}`;
@@ -1419,8 +1434,9 @@ export class CanvasRenderer implements TypeAwareRenderer {
       this._context.scale(horizontalScale / 100, 1);
     }
 
-    // Apply text rise (vertical offset) - note: sign is flipped due to local scale
-    const adjustedY = textRise * ctm.d;
+    // Apply text rise (vertical offset)
+    // After our transform, positive Y goes down, so text rise (up) is negative
+    const adjustedY = textRise;
 
     // Render based on mode - draw at local origin (0, 0) since we translated
     let xOffset = 0;
@@ -1437,9 +1453,9 @@ export class CanvasRenderer implements TypeAwareRenderer {
 
       // Advance position
       const charWidth = this._context.measureText(char).width;
-      xOffset += charWidth + charSpacing * ctm.a;
+      xOffset += charWidth + charSpacing;
       if (char === " ") {
-        xOffset += wordSpacing * ctm.a;
+        xOffset += wordSpacing;
       }
     }
 
