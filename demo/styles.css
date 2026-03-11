@@ -361,12 +361,12 @@ body {
 
 /* Mouse text selection - purple */
 ::selection {
-  background: rgba(140, 150, 255, 0.5);
+  background: #bfbfff;
   color: transparent;
 }
 
 ::-moz-selection {
-  background: rgba(140, 150, 255, 0.5);
+  background: #bfbfff;
   color: transparent;
 }
 
