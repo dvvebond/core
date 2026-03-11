@@ -172,12 +172,39 @@ async function initializeViewer(): Promise<void> {
   });
 
   // Set up viewport manager events
+  // The ViewportManager renders pages and provides the rendered element (canvas)
+  // We need to place these canvases into the appropriate page containers
   state.viewportManager.addEventListener("pageRendered", event => {
     console.log(
       `[DEBUG_INSTRUMENTATION] pageRendered event: pageIndex=${event.pageIndex}, element=${!!event.element}`,
     ); // [DEBUG_INSTRUMENTATION]
     if (event.element) {
-      renderPage(event.pageIndex, event.element as HTMLElement);
+      // Get or create the page container
+      let container = state.pageElements.get(event.pageIndex);
+      if (!container) {
+        container = document.createElement("div");
+        container.className = "page-container";
+        container.dataset.pageIndex = String(event.pageIndex);
+        state.pageElements.set(event.pageIndex, container);
+        elements.viewer.appendChild(container);
+      }
+
+      // The element from ViewportManager is the rendered canvas
+      // We need to clone it since the renderer reuses its internal canvas
+      const canvas = event.element as HTMLCanvasElement;
+      const clonedCanvas = document.createElement("canvas");
+      clonedCanvas.width = canvas.width;
+      clonedCanvas.height = canvas.height;
+      const ctx = clonedCanvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(canvas, 0, 0);
+      }
+
+      // Clear container and add the cloned canvas
+      container.innerHTML = "";
+      container.style.width = `${canvas.width}px`;
+      container.style.height = `${canvas.height}px`;
+      container.appendChild(clonedCanvas);
     }
   });
   state.viewportManager.addEventListener("pageStateChange", event => {
