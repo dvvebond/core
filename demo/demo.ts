@@ -336,10 +336,9 @@ function createPageSource() {
 }
 
 function cleanupViewer(): void {
-  if (state.virtualScroller) {
-    state.virtualScroller.destroy();
-    state.virtualScroller = null;
-  }
+  // VirtualScroller doesn't have resources to clean up, just clear reference
+  state.virtualScroller = null;
+
   if (state.viewportManager) {
     state.viewportManager.dispose();
     state.viewportManager = null;
