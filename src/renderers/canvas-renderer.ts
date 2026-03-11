@@ -1378,94 +1378,127 @@ export class CanvasRenderer implements TypeAwareRenderer {
    * Internal method to render a decoded Unicode string.
    */
   private showTextString(text: string): void {
-    if (!this._context || !this._inTextObject) {
+    if (!this._inTextObject) {
       return;
     }
 
     const { textRenderMode, charSpacing, wordSpacing, horizontalScale, textRise, fontSize } =
       this._graphicsState;
 
-    // Apply text matrix and CTM
-    this._context.save();
-
-    // Get the text matrix and CTM
+    // Get the text matrix
     const tm = this._textState.textMatrix;
-    const ctm = this._graphicsState.ctm;
-
-    // Calculate the position in PDF coordinates
-    const pdfX = tm.e;
-    const pdfY = tm.f;
 
     // Calculate effective font size from the text matrix vertical scale
     const effectiveFontSize = Math.abs(fontSize * tm.d);
 
-    // The canvas has a global Y-flip transformation applied via:
-    //   translate(0, pageHeight) then scale(1, -1)
-    // This converts PDF coordinates (origin bottom-left, Y up) to canvas.
-    //
-    // For text, the global flip makes glyphs appear upside-down.
-    // We need to:
-    // 1. Move to text position
-    // 2. Apply text matrix scaling/rotation
-    // 3. Flip Y axis locally so text renders right-side up
-    this._context.translate(pdfX, pdfY);
+    // Track total advance in text space for updating the text matrix
+    let totalTextSpaceAdvance = 0;
 
-    // Apply the text matrix 2x2 part (a, b, c, d) for rotation/scaling
-    // We need to handle the sign of tm.d to preserve text orientation
-    // A positive tm.d means normal text, negative means pre-flipped
-    const scaleX = tm.a;
-    const shearX = tm.b;
-    const shearY = tm.c;
-    const scaleY = tm.d;
+    // Render each character and calculate advance
+    if (this._context) {
+      // When we have a context, render the text
+      this._context.save();
 
-    // Apply text matrix transformation, then flip to counteract global flip
-    // The key insight: we want text to appear right-side up after the global flip
-    // Global flip: scale(1, -1) makes Y go up on screen
-    // We apply: scale(1, -1) locally to flip text glyphs back to normal
-    this._context.transform(scaleX, shearX, -shearY, -scaleY, 0, 0);
+      // Calculate the position in PDF coordinates
+      const pdfX = tm.e;
+      const pdfY = tm.f;
 
-    // Set up the context for text rendering
-    this._context.font = `${effectiveFontSize}px ${mapPdfFontToCanvas(this._graphicsState.fontName)}`;
-    this._context.fillStyle = this._graphicsState.fillColor;
-    this._context.strokeStyle = this._graphicsState.strokeColor;
+      // The canvas has a global Y-flip transformation applied via:
+      //   translate(0, pageHeight) then scale(1, -1)
+      // This converts PDF coordinates (origin bottom-left, Y up) to canvas.
+      //
+      // For text, the global flip makes glyphs appear upside-down.
+      // We need to:
+      // 1. Move to text position
+      // 2. Apply text matrix scaling/rotation
+      // 3. Flip Y axis locally so text renders right-side up
+      this._context.translate(pdfX, pdfY);
 
-    // Apply horizontal scaling if needed
-    if (horizontalScale !== 100) {
-      this._context.scale(horizontalScale / 100, 1);
+      // Apply the text matrix 2x2 part (a, b, c, d) for rotation/scaling
+      const scaleX = tm.a;
+      const shearX = tm.b;
+      const shearY = tm.c;
+      const scaleY = tm.d;
+
+      // Apply text matrix transformation, then flip to counteract global flip
+      this._context.transform(scaleX, shearX, -shearY, -scaleY, 0, 0);
+
+      // Set up the context for text rendering
+      this._context.font = `${effectiveFontSize}px ${mapPdfFontToCanvas(this._graphicsState.fontName)}`;
+      this._context.fillStyle = this._graphicsState.fillColor;
+      this._context.strokeStyle = this._graphicsState.strokeColor;
+
+      // Apply horizontal scaling if needed
+      if (horizontalScale !== 100) {
+        this._context.scale(horizontalScale / 100, 1);
+      }
+
+      // Apply text rise (vertical offset)
+      const adjustedY = textRise;
+
+      // Render based on mode - draw at local origin (0, 0) since we translated
+      let xOffset = 0;
+      for (const char of text) {
+        if (
+          textRenderMode === TextRenderMode.Fill ||
+          textRenderMode === TextRenderMode.FillStroke
+        ) {
+          this._context.fillText(char, xOffset, adjustedY);
+        }
+        if (
+          textRenderMode === TextRenderMode.Stroke ||
+          textRenderMode === TextRenderMode.FillStroke
+        ) {
+          this._context.strokeText(char, xOffset, adjustedY);
+        }
+
+        // Get glyph width from the font if available, otherwise use canvas measurement
+        let glyphWidth: number;
+        if (this._currentFont) {
+          // Use font's glyph width (in 1/1000 em units) for accurate positioning
+          const charCode = char.charCodeAt(0);
+          const fontWidth = this._currentFont.getWidth(charCode);
+          // Convert from glyph units (1000 = 1 em) to text space units
+          glyphWidth = (fontWidth / 1000) * fontSize;
+        } else {
+          // Fallback: use canvas measurement, but scale appropriately
+          const measuredWidth = this._context.measureText(char).width;
+          // Canvas measurement is already in the effective font size, convert back to base units
+          glyphWidth = (measuredWidth / effectiveFontSize) * fontSize;
+        }
+
+        // Calculate the displacement for this character according to PDF spec (Section 9.4.4):
+        // tx = ((w0 - Tj/1000) * Tfs + Tc + Tw) * Th
+        const isSpace = char === " " || char === "\u00A0";
+        const tx =
+          (glyphWidth + charSpacing + (isSpace ? wordSpacing : 0)) * (horizontalScale / 100);
+
+        // Accumulate the text space advance
+        totalTextSpaceAdvance += tx;
+
+        // Calculate screen-space advance for rendering
+        const screenAdvance = tx * Math.abs(tm.a);
+        xOffset += screenAdvance;
+      }
+
+      this._context.restore();
+    } else {
+      // Headless mode: calculate text advance without rendering
+      // Use estimated glyph widths (0.5 em average) since we have no font metrics
+      for (const char of text) {
+        // Estimate glyph width as 0.5 em for average characters
+        const glyphWidth = 0.5 * fontSize;
+        const isSpace = char === " " || char === "\u00A0";
+        const tx =
+          (glyphWidth + charSpacing + (isSpace ? wordSpacing : 0)) * (horizontalScale / 100);
+        totalTextSpaceAdvance += tx;
+      }
     }
 
-    // Apply text rise (vertical offset)
-    // After our transform, positive Y goes down, so text rise (up) is negative
-    const adjustedY = textRise;
-
-    // Render based on mode - draw at local origin (0, 0) since we translated
-    let xOffset = 0;
-    for (const char of text) {
-      if (textRenderMode === TextRenderMode.Fill || textRenderMode === TextRenderMode.FillStroke) {
-        this._context.fillText(char, xOffset, adjustedY);
-      }
-      if (
-        textRenderMode === TextRenderMode.Stroke ||
-        textRenderMode === TextRenderMode.FillStroke
-      ) {
-        this._context.strokeText(char, xOffset, adjustedY);
-      }
-
-      // Advance position
-      const charWidth = this._context.measureText(char).width;
-      xOffset += charWidth + charSpacing;
-      if (char === " ") {
-        xOffset += wordSpacing;
-      }
-    }
-
-    this._context.restore();
-
-    // Update text matrix (advance position in text space units)
-    // xOffset is the advance in canvas pixels from the starting position
-    const textSpaceAdvance = xOffset / (effectiveFontSize / fontSize);
+    // Update text matrix by advancing the position in text space
+    // The text matrix translation is in text space units (not scaled by font size)
     this._textState.textMatrix = this._textState.textMatrix.translate(
-      textSpaceAdvance / fontSize,
+      totalTextSpaceAdvance / fontSize,
       0,
     );
   }
@@ -1475,13 +1508,17 @@ export class CanvasRenderer implements TypeAwareRenderer {
    * @deprecated Use showTextArrayFromCodes for proper font encoding support
    */
   showTextArray(array: Array<string | number>): void {
+    const { fontSize, horizontalScale } = this._graphicsState;
+
     for (const item of array) {
       if (typeof item === "string") {
         this.showText(item);
       } else {
-        // Negative numbers move text position forward
-        const adjustment = -item / 1000;
-        this._textState.textMatrix = this._textState.textMatrix.translate(adjustment, 0);
+        // TJ adjustment is in thousandths of em, negative = move right
+        // Formula: tx = (-adjustment / 1000) * Tfs * Th
+        const tx = (-item / 1000) * fontSize * (horizontalScale / 100);
+        // Translate in text space (divide by fontSize to get text space units)
+        this._textState.textMatrix = this._textState.textMatrix.translate(tx / fontSize, 0);
       }
     }
   }
@@ -1491,13 +1528,17 @@ export class CanvasRenderer implements TypeAwareRenderer {
    * Properly handles font encoding for each text segment.
    */
   showTextArrayFromCodes(array: Array<Uint8Array | number>): void {
+    const { fontSize, horizontalScale } = this._graphicsState;
+
     for (const item of array) {
       if (item instanceof Uint8Array) {
         this.showTextFromCodes(item);
       } else {
-        // Negative numbers move text position forward
-        const adjustment = -item / 1000;
-        this._textState.textMatrix = this._textState.textMatrix.translate(adjustment, 0);
+        // TJ adjustment is in thousandths of em, negative = move right
+        // Formula: tx = (-adjustment / 1000) * Tfs * Th
+        const tx = (-item / 1000) * fontSize * (horizontalScale / 100);
+        // Translate in text space (divide by fontSize to get text space units)
+        this._textState.textMatrix = this._textState.textMatrix.translate(tx / fontSize, 0);
       }
     }
   }

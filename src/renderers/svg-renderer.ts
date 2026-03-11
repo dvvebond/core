@@ -1317,22 +1317,39 @@ export class SVGRenderer implements BaseRenderer {
     this._pageGroup.appendChild(textEl);
 
     // Update text matrix (advance position)
-    // Estimate text width - in a real implementation this would use font metrics
-    const estimatedWidth = text.length * fontSize * 0.5 * (horizontalScale / 100);
-    this._textState.textMatrix = this._textState.textMatrix.translate(estimatedWidth / fontSize, 0);
+    // Calculate total text advance according to PDF spec (Section 9.4.4):
+    // For each character: tx = ((w0) * Tfs + Tc + Tw) * Th
+    // Where w0 is glyph width (estimate 0.5 for average character width in em units)
+    let totalTextSpaceAdvance = 0;
+    for (const char of text) {
+      // Estimate glyph width as 0.5 em for average characters
+      // A more accurate implementation would use font metrics
+      const glyphWidth = 0.5 * fontSize;
+      const isSpace = char === " " || char === "\u00A0";
+      const tx = (glyphWidth + charSpacing + (isSpace ? wordSpacing : 0)) * (horizontalScale / 100);
+      totalTextSpaceAdvance += tx;
+    }
+    this._textState.textMatrix = this._textState.textMatrix.translate(
+      totalTextSpaceAdvance / fontSize,
+      0,
+    );
   }
 
   /**
    * Show text with individual glyph positioning (TJ operator).
    */
   showTextArray(array: Array<string | number>): void {
+    const { fontSize, horizontalScale } = this._graphicsState;
+
     for (const item of array) {
       if (typeof item === "string") {
         this.showText(item);
       } else {
-        // Negative numbers move text position forward
-        const adjustment = -item / 1000;
-        this._textState.textMatrix = this._textState.textMatrix.translate(adjustment, 0);
+        // TJ adjustment is in thousandths of em, negative = move right
+        // Formula: tx = (-adjustment / 1000) * Tfs * Th
+        const tx = (-item / 1000) * fontSize * (horizontalScale / 100);
+        // Translate in text space (divide by fontSize to get text space units)
+        this._textState.textMatrix = this._textState.textMatrix.translate(tx / fontSize, 0);
       }
     }
   }

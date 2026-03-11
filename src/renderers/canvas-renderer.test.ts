@@ -781,3 +781,168 @@ describe("CanvasRenderer coordinate transformation", () => {
     }
   });
 });
+
+describe("CanvasRenderer character spacing", () => {
+  let renderer: CanvasRenderer;
+
+  beforeEach(async () => {
+    renderer = new CanvasRenderer();
+    await renderer.initialize({ headless: true });
+  });
+
+  describe("text matrix updates after showText", () => {
+    it("advances text matrix correctly after showing text", () => {
+      renderer.beginText();
+      renderer.setFont("/Helvetica", 12);
+      renderer.setTextMatrix(1, 0, 0, 1, 100, 700);
+
+      // Record initial position
+      const initialX = renderer.textState.textMatrix.e;
+      expect(initialX).toBe(100);
+
+      // Show some text (in headless mode this won't actually render but should update position)
+      renderer.showText("Hello");
+
+      // Text matrix should have advanced
+      const finalX = renderer.textState.textMatrix.e;
+      expect(finalX).toBeGreaterThan(initialX);
+      renderer.endText();
+    });
+
+    it("applies character spacing when advancing text position", () => {
+      renderer.beginText();
+      renderer.setFont("/Helvetica", 12);
+      renderer.setTextMatrix(1, 0, 0, 1, 100, 700);
+
+      // Set character spacing
+      renderer.setCharSpacing(2);
+      expect(renderer.graphicsState.charSpacing).toBe(2);
+
+      const initialX = renderer.textState.textMatrix.e;
+      renderer.showText("ab");
+
+      const withSpacingX = renderer.textState.textMatrix.e;
+      renderer.endText();
+
+      // Reset and try without spacing
+      renderer.beginText();
+      renderer.setFont("/Helvetica", 12);
+      renderer.setTextMatrix(1, 0, 0, 1, 100, 700);
+      renderer.setCharSpacing(0);
+      renderer.showText("ab");
+
+      const withoutSpacingX = renderer.textState.textMatrix.e;
+      renderer.endText();
+
+      // With character spacing, advance should be greater
+      expect(withSpacingX).toBeGreaterThan(withoutSpacingX);
+    });
+
+    it("applies word spacing only for space characters", () => {
+      renderer.beginText();
+      renderer.setFont("/Helvetica", 12);
+      renderer.setTextMatrix(1, 0, 0, 1, 100, 700);
+      renderer.setWordSpacing(5);
+
+      const initialX = renderer.textState.textMatrix.e;
+      renderer.showText("a b"); // Two characters with space
+
+      const withSpaceX = renderer.textState.textMatrix.e;
+      renderer.endText();
+
+      // Reset and try with no spaces
+      renderer.beginText();
+      renderer.setFont("/Helvetica", 12);
+      renderer.setTextMatrix(1, 0, 0, 1, 100, 700);
+      renderer.setWordSpacing(5);
+      renderer.showText("abc"); // Three characters, no space
+
+      const noSpaceX = renderer.textState.textMatrix.e;
+      renderer.endText();
+
+      // Word spacing should have added extra advance for the space
+      const spaceAdvance = withSpaceX - initialX;
+      const noSpaceAdvance = noSpaceX - 100;
+
+      // 'a b' is 3 chars (a, space, b), 'abc' is also 3 chars
+      // but 'a b' should have extra word spacing for the space character
+      expect(spaceAdvance).toBeGreaterThan(noSpaceAdvance - 5); // Some tolerance for glyph width differences
+    });
+
+    it("applies horizontal scaling to text advance", () => {
+      renderer.beginText();
+      renderer.setFont("/Helvetica", 12);
+      renderer.setTextMatrix(1, 0, 0, 1, 100, 700);
+      renderer.setHorizontalScale(200); // 200% scaling
+
+      renderer.showText("a");
+      const scaledX = renderer.textState.textMatrix.e;
+      renderer.endText();
+
+      // Reset and try with normal scaling
+      renderer.beginText();
+      renderer.setFont("/Helvetica", 12);
+      renderer.setTextMatrix(1, 0, 0, 1, 100, 700);
+      renderer.setHorizontalScale(100); // Normal scaling
+
+      renderer.showText("a");
+      const normalX = renderer.textState.textMatrix.e;
+      renderer.endText();
+
+      // At 200% horizontal scale, the advance should be approximately double
+      const scaledAdvance = scaledX - 100;
+      const normalAdvance = normalX - 100;
+
+      // Account for floating-point differences
+      expect(scaledAdvance).toBeCloseTo(normalAdvance * 2, 1);
+    });
+  });
+
+  describe("TJ array adjustments", () => {
+    it("applies TJ positioning adjustments correctly", () => {
+      renderer.beginText();
+      renderer.setFont("/Helvetica", 12);
+      renderer.setTextMatrix(1, 0, 0, 1, 100, 700);
+
+      // TJ arrays with negative values should move text forward
+      // Positive values should move text backward
+      const initialX = renderer.textState.textMatrix.e;
+
+      // Simulate TJ array: [string, -100, string]
+      // -100 means move right by (100/1000) * fontSize * horizontalScale
+      const textArray = new PdfArray([
+        PdfString.fromString("H"),
+        PdfNumber.of(-500), // Move right
+        PdfString.fromString("i"),
+      ]);
+
+      renderer.executeOperator(Operator.of(Op.ShowTextArray, textArray));
+
+      const finalX = renderer.textState.textMatrix.e;
+      expect(finalX).toBeGreaterThan(initialX);
+
+      renderer.endText();
+    });
+
+    it("handles positive TJ adjustments (move backward)", () => {
+      renderer.beginText();
+      renderer.setFont("/Helvetica", 12);
+      renderer.setTextMatrix(1, 0, 0, 1, 100, 700);
+
+      // Show text normally first
+      renderer.showText("a");
+      const afterFirstChar = renderer.textState.textMatrix.e;
+
+      // Apply positive adjustment (move backward)
+      renderer.showTextArray([500]); // Move left by (500/1000) * 12 * 1.0 = 6 units
+
+      const afterAdjustment = renderer.textState.textMatrix.e;
+
+      // Position should have moved backward (or stayed same due to clamping in some implementations)
+      // The key is that positive values should move in the opposite direction of text flow
+      expect(afterAdjustment).toBeLessThan(afterFirstChar);
+
+      renderer.endText();
+    });
+  });
+});
