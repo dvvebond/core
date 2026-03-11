@@ -1,0 +1,1 @@
+[2026-03-11T09:54:34+01:00] DEBUG: Fixed duplicate AuthenticationError export - renamed to AuthHandlerAuthenticationError (auth-handler.ts:76) and ResourceLoaderAuthenticationError (resource-loader.ts:41)
