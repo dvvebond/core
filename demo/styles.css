@@ -375,11 +375,13 @@ body {
 .text-layer .highlight {
   background-color: #c5d9c3;
   border-radius: 3px;
+  mix-blend-mode: multiply;
 }
 
 /* Current/selected search result - same green, slightly darker */
 .text-layer .highlight.selected {
   background-color: #a8c9a5;
+  mix-blend-mode: multiply;
 }
 
 
