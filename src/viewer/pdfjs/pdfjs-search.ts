@@ -278,16 +278,25 @@ export async function searchDocument(
           const offsetInItem = overlapStart - itemStart;
           const matchLengthInItem = overlapEnd - overlapStart;
 
-          // Calculate x offset based on character position
-          const xOffset = offsetInItem * item.charWidth;
-          // Calculate width based on matched text length in this item
-          const matchWidth = matchLengthInItem * item.charWidth;
+          // Use the actual item width and calculate proportionally
+          // This is more accurate than using average character width
+          const itemTextLength = item.text.length;
+          const startRatio = offsetInItem / itemTextLength;
+          const lengthRatio = matchLengthInItem / itemTextLength;
+
+          const xOffset = startRatio * item.width;
+          const matchWidth = lengthRatio * item.width;
+
+          // PDF text transform[5] is the baseline Y coordinate
+          // The height represents the font size / ascent
+          // We store the baseline Y and height for proper rendering
+          const textHeight = item.height || 12;
 
           boundsArray.push({
             x: item.transform[4] + xOffset,
-            y: item.transform[5],
-            width: matchWidth > 0 ? matchWidth : item.charWidth,
-            height: item.height || 12,
+            y: item.transform[5], // baseline Y in PDF coordinates
+            width: matchWidth > 0 ? matchWidth : item.width / itemTextLength,
+            height: textHeight,
           });
         } else if (matchStartFound && itemStart >= match.end) {
           // We've passed the match, no need to continue

@@ -360,13 +360,13 @@ body {
 
 .text-layer > span::selection,
 .text-layer > div::selection {
-  background: rgba(191, 191, 255, 0.5);
+  background: rgba(191, 191, 255, 0.7);
   color: transparent;
 }
 
 .text-layer > span::-moz-selection,
 .text-layer > div::-moz-selection {
-  background: rgba(191, 191, 255, 0.5);
+  background: rgba(191, 191, 255, 0.7);
   color: transparent;
 }
 
@@ -376,14 +376,13 @@ body {
 
 .search-highlight {
   position: absolute;
-  background: rgba(197, 217, 195, 0.5);
+  background: rgba(197, 217, 195, 0.7);
   border-radius: 3px;
   pointer-events: none;
-  mix-blend-mode: multiply;
 }
 
 .search-highlight.current {
-  background: rgba(168, 212, 165, 0.6);
+  background: rgba(168, 212, 165, 0.85);
   z-index: 10;
 }
 

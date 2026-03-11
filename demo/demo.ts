@@ -616,18 +616,25 @@ async function highlightSearchResults(pageIndex: number, container: HTMLElement)
       }
 
       // Position highlight based on bounds
-      // PDF coordinates have origin at bottom-left, need to convert to top-left
-      // Convert PDF coordinates to viewport coordinates
+      // PDF coordinates: origin at bottom-left, Y increases upward
+      // Screen coordinates: origin at top-left, Y increases downward
+      // bounds.y is the baseline (bottom of text) in PDF coordinates
+      // bounds.height is the text height (ascent)
+
+      // Convert to scaled coordinates
       const x = bounds.x * state.scale;
-      // Flip Y coordinate: viewport.height - (y + height) * scale
-      const y = viewport.height - (bounds.y + bounds.height) * state.scale;
       const width = bounds.width * state.scale;
       const height = bounds.height * state.scale;
 
+      // Convert Y: baseline is at bounds.y, text extends upward by bounds.height
+      // In screen coords: top of text = viewport.height - (baseline + height) * scale
+      // But we want to align with the actual text, so use baseline directly
+      const y = viewport.height - bounds.y * state.scale - height;
+
       highlight.style.left = `${x}px`;
       highlight.style.top = `${y}px`;
-      highlight.style.width = `${Math.max(width, 20)}px`;
-      highlight.style.height = `${Math.max(height, 14)}px`;
+      highlight.style.width = `${Math.max(width, 4)}px`;
+      highlight.style.height = `${Math.max(height, 10)}px`;
       container.appendChild(highlight);
     }
   }
