@@ -1,0 +1,67 @@
+{
+  "description": "Various page dimension configurations for virtual scrolling tests",
+  "standardSizes": {
+    "letter": { "width": 612, "height": 792, "description": "US Letter (8.5 x 11 inches)" },
+    "legal": { "width": 612, "height": 1008, "description": "US Legal (8.5 x 14 inches)" },
+    "a4": { "width": 595, "height": 842, "description": "A4 (210 x 297 mm)" },
+    "a3": { "width": 842, "height": 1191, "description": "A3 (297 x 420 mm)" },
+    "a5": { "width": 420, "height": 595, "description": "A5 (148 x 210 mm)" },
+    "tabloid": { "width": 792, "height": 1224, "description": "Tabloid (11 x 17 inches)" }
+  },
+  "testDocuments": {
+    "uniform": {
+      "description": "10 identical letter pages",
+      "pages": [
+        { "width": 612, "height": 792 },
+        { "width": 612, "height": 792 },
+        { "width": 612, "height": 792 },
+        { "width": 612, "height": 792 },
+        { "width": 612, "height": 792 },
+        { "width": 612, "height": 792 },
+        { "width": 612, "height": 792 },
+        { "width": 612, "height": 792 },
+        { "width": 612, "height": 792 },
+        { "width": 612, "height": 792 }
+      ]
+    },
+    "mixed": {
+      "description": "Mixed page sizes typical of scanned documents",
+      "pages": [
+        { "width": 612, "height": 792 },
+        { "width": 612, "height": 792 },
+        { "width": 792, "height": 612, "rotation": 90 },
+        { "width": 612, "height": 1008 },
+        { "width": 595, "height": 842 },
+        { "width": 612, "height": 792 }
+      ]
+    },
+    "landscape": {
+      "description": "Landscape pages with rotations",
+      "pages": [
+        { "width": 792, "height": 612, "rotation": 0 },
+        { "width": 612, "height": 792, "rotation": 90 },
+        { "width": 792, "height": 612, "rotation": 0 },
+        { "width": 612, "height": 792, "rotation": 270 }
+      ]
+    },
+    "large": {
+      "description": "Large format architectural pages",
+      "pages": [
+        { "width": 2448, "height": 3168, "description": "ARCH D" },
+        { "width": 3168, "height": 4896, "description": "ARCH E" }
+      ]
+    },
+    "varying": {
+      "description": "Varying heights to test scroll correction",
+      "pages": [
+        { "width": 612, "height": 500 },
+        { "width": 612, "height": 1200 },
+        { "width": 612, "height": 792 },
+        { "width": 612, "height": 400 },
+        { "width": 612, "height": 1000 }
+      ]
+    }
+  },
+  "zoomLevels": [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4, 5],
+  "rotations": [0, 90, 180, 270]
+}

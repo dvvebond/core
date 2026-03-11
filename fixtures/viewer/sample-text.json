@@ -1,0 +1,149 @@
+{
+  "description": "Sample extracted text data for text layer testing",
+  "pages": [
+    {
+      "pageIndex": 0,
+      "text": "Hello World",
+      "chars": [
+        {
+          "char": "H",
+          "bbox": { "x": 72, "y": 720, "width": 10, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "e",
+          "bbox": { "x": 82, "y": 720, "width": 8, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "l",
+          "bbox": { "x": 90, "y": 720, "width": 4, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "l",
+          "bbox": { "x": 94, "y": 720, "width": 4, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "o",
+          "bbox": { "x": 98, "y": 720, "width": 8, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": " ",
+          "bbox": { "x": 106, "y": 720, "width": 4, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "W",
+          "bbox": { "x": 110, "y": 720, "width": 12, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "o",
+          "bbox": { "x": 122, "y": 720, "width": 8, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "r",
+          "bbox": { "x": 130, "y": 720, "width": 6, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "l",
+          "bbox": { "x": 136, "y": 720, "width": 4, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "d",
+          "bbox": { "x": 140, "y": 720, "width": 8, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        }
+      ]
+    },
+    {
+      "pageIndex": 1,
+      "text": "Second Page",
+      "chars": [
+        {
+          "char": "S",
+          "bbox": { "x": 72, "y": 720, "width": 10, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "e",
+          "bbox": { "x": 82, "y": 720, "width": 8, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "c",
+          "bbox": { "x": 90, "y": 720, "width": 7, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "o",
+          "bbox": { "x": 97, "y": 720, "width": 8, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "n",
+          "bbox": { "x": 105, "y": 720, "width": 8, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "d",
+          "bbox": { "x": 113, "y": 720, "width": 8, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": " ",
+          "bbox": { "x": 121, "y": 720, "width": 4, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "P",
+          "bbox": { "x": 125, "y": 720, "width": 10, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "a",
+          "bbox": { "x": 135, "y": 720, "width": 8, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "g",
+          "bbox": { "x": 143, "y": 720, "width": 8, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        },
+        {
+          "char": "e",
+          "bbox": { "x": 151, "y": 720, "width": 8, "height": 12 },
+          "fontSize": 12,
+          "fontName": "Helvetica"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "description": "Multi-page text corpus for search functionality testing",
+  "pages": [
+    {
+      "pageIndex": 0,
+      "text": "The quick brown fox jumps over the lazy dog. This is a sample PDF document for testing search functionality. The document contains multiple pages with various content to test search across pages.",
+      "metadata": {
+        "title": "Introduction",
+        "wordCount": 35
+      }
+    },
+    {
+      "pageIndex": 1,
+      "text": "Page two contains more text for searching. The quick brown fox appears again here. We can test case-sensitive searching with FOX and Fox variations. Special characters like & < > are also included.",
+      "metadata": {
+        "title": "Content",
+        "wordCount": 34
+      }
+    },
+    {
+      "pageIndex": 2,
+      "text": "This page tests whole word matching. Testing test tested tester. The word 'test' should match differently when whole word mode is enabled. Numbers like 123 and file1.txt patterns help test regex.",
+      "metadata": {
+        "title": "Testing",
+        "wordCount": 32
+      }
+    },
+    {
+      "pageIndex": 3,
+      "text": "Final page with unique content for edge case testing. Unicode characters: café, naïve, 中文, 日本語. Emoji support: 📄 📖 🔍. Long words: supercalifragilisticexpialidocious. Hyphenated-words-here.",
+      "metadata": {
+        "title": "Edge Cases",
+        "wordCount": 22
+      }
+    }
+  ],
+  "testQueries": [
+    { "query": "fox", "expectedMatches": 2, "description": "Simple search across pages" },
+    {
+      "query": "FOX",
+      "expectedMatches": 2,
+      "caseSensitive": false,
+      "description": "Case insensitive"
+    },
+    {
+      "query": "FOX",
+      "expectedMatches": 1,
+      "caseSensitive": true,
+      "description": "Case sensitive"
+    },
+    {
+      "query": "test",
+      "expectedMatches": 4,
+      "wholeWord": false,
+      "description": "Partial word match"
+    },
+    { "query": "test", "expectedMatches": 1, "wholeWord": true, "description": "Whole word match" },
+    {
+      "query": "file\\d+\\.txt",
+      "expectedMatches": 1,
+      "isRegex": true,
+      "description": "Regex pattern"
+    },
+    { "query": "中文", "expectedMatches": 1, "description": "Unicode search" }
+  ]
+}
