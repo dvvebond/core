@@ -166,6 +166,16 @@ Real-world PDFs are messy. Export a document through three different tools and y
 - **High-level**: `PDF`, `PDFPage`, `PDFForm` for common tasks
 - **Low-level**: `PdfDict`, `PdfArray`, `PdfStream` for full control
 
+## Demo
+
+Run the interactive PDF viewer demo to explore LibPDF's viewing capabilities:
+
+```bash
+bun run demo
+```
+
+See [demo/README.md](demo/README.md) for features and keyboard shortcuts.
+
 ## Documentation
 
 Full documentation at [libpdf.dev](https://libpdf.dev)
