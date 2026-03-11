@@ -65,3 +65,55 @@ export {
   createHighlightEvent,
   mergeHighlightStyles,
 } from "./highlight/types";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Zoom Controller
+// ─────────────────────────────────────────────────────────────────────────────
+
+export { ZoomController, createZoomController } from "./zoom-controller.ts";
+export type { ZoomControllerOptions } from "./zoom-controller.ts";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pan Handler
+// ─────────────────────────────────────────────────────────────────────────────
+
+export { PanHandler, createPanHandler } from "./pan-handler.ts";
+export type { PanHandlerOptions } from "./pan-handler.ts";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Interaction Events
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type {
+  // Common types
+  Point,
+  Velocity,
+  EasingFunction,
+  // Zoom events
+  ZoomStartEvent,
+  ZoomUpdateEvent,
+  ZoomEndEvent,
+  ZoomEvent,
+  ZoomEventListener,
+  ZoomAnimationConfig,
+  // Pan events
+  PanStartEvent,
+  PanMoveEvent,
+  PanEndEvent,
+  PanMomentumEvent,
+  PanMomentumEndEvent,
+  PanEvent,
+  PanEventListener,
+  PanMomentumConfig,
+  // Combined types
+  InteractionEvent,
+  InteractionEventListener,
+} from "./interaction-events.ts";
+
+export {
+  easeLinear,
+  easeOutCubic,
+  easeOutQuart,
+  easeInOutCubic,
+  easeOutExpo,
+} from "./interaction-events.ts";
