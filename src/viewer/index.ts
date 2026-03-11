@@ -117,3 +117,26 @@ export {
   easeInOutCubic,
   easeOutExpo,
 } from "./interaction-events.ts";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Content Stream Processing
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  ContentStreamProcessor,
+  createContentStreamProcessor,
+  type TextArrayElement,
+} from "./ContentStreamProcessor.ts";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Font Management
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  FontManager,
+  createFontManager,
+  getGlobalFontManager,
+  type FontMetrics,
+  type LoadedFont,
+  type FontStyle,
+} from "./FontManager.ts";

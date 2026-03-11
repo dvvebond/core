@@ -7,7 +7,6 @@
  */
 
 import { Op, Operator } from "#src/content/operators";
-import { ContentStreamParser } from "#src/content/parsing";
 import {
   CoordinateTransformer,
   type Point2D,
@@ -18,8 +17,9 @@ import type { PdfFont } from "#src/fonts/pdf-font";
 import { Matrix } from "#src/helpers/matrix";
 import { PdfArray } from "#src/objects/pdf-array";
 import { PdfName } from "#src/objects/pdf-name";
-import { PdfNumber } from "#src/objects/pdf-number";
 import { PdfString } from "#src/objects/pdf-string";
+import { ContentStreamProcessor } from "#src/viewer/ContentStreamProcessor";
+import { FontManager } from "#src/viewer/FontManager";
 
 import type {
   BaseRenderer,
@@ -1706,117 +1706,35 @@ export class CanvasRenderer implements BaseRenderer {
    * This converts raw PDF content stream bytes into executable operators.
    */
   private parseContentToOperators(bytes: Uint8Array): Operator[] {
-    const parser = new ContentStreamParser(bytes);
-    const { operations } = parser.parse();
-
-    return operations.map(op => {
-      if ("operands" in op) {
-        const operands: (number | string | PdfName | PdfString | PdfArray)[] = [];
-        for (const token of op.operands) {
-          switch (token.type) {
-            case "number":
-              operands.push(token.value);
-              break;
-            case "name":
-              operands.push(PdfName.of(token.value));
-              break;
-            case "string":
-              operands.push(PdfString.fromBytes(token.value));
-              break;
-            case "array": {
-              // Convert array tokens to PdfArray
-              const arr = new PdfArray();
-              for (const item of token.items) {
-                if (item.type === "number") {
-                  arr.push(PdfNumber.of(item.value));
-                } else if (item.type === "string") {
-                  arr.push(PdfString.fromBytes(item.value));
-                } else if (item.type === "name") {
-                  arr.push(PdfName.of(item.value));
-                }
-              }
-              operands.push(arr);
-              break;
-            }
-            // Skip other token types (dict, bool, null) for now
-            default:
-              break;
-          }
-        }
-        return Operator.of(op.operator as Op, ...operands);
-      }
-      // Inline image - skip for now
-      return Operator.of(Op.EndPath);
-    });
+    return ContentStreamProcessor.parseToOperators(bytes);
   }
 }
 
 // ============================================================================
-// Helper Functions
+// Helper Functions (delegating to ContentStreamProcessor)
 // ============================================================================
 
 /**
  * Convert CMYK to RGB values.
  */
 function cmykToRgb(c: number, m: number, y: number, k: number): [number, number, number] {
-  const r = Math.round(255 * (1 - c) * (1 - k));
-  const g = Math.round(255 * (1 - m) * (1 - k));
-  const b = Math.round(255 * (1 - y) * (1 - k));
-  return [r, g, b];
+  return ContentStreamProcessor.cmykToRgb(c, m, y, k);
 }
 
 /**
  * Map PDF font names to Canvas-compatible font families.
+ * Uses a local FontManager instance for font mapping.
  */
+const fontManagerInstance = new FontManager();
 function mapPdfFontToCanvas(pdfFontName: string): string {
-  // Remove leading slash if present
-  const name = pdfFontName.startsWith("/") ? pdfFontName.slice(1) : pdfFontName;
-
-  // Common PDF base fonts to web fonts
-  const fontMap: Record<string, string> = {
-    Helvetica: "Helvetica, Arial, sans-serif",
-    "Helvetica-Bold": "Helvetica, Arial, sans-serif",
-    "Helvetica-Oblique": "Helvetica, Arial, sans-serif",
-    "Helvetica-BoldOblique": "Helvetica, Arial, sans-serif",
-    "Times-Roman": "Times New Roman, Times, serif",
-    "Times-Bold": "Times New Roman, Times, serif",
-    "Times-Italic": "Times New Roman, Times, serif",
-    "Times-BoldItalic": "Times New Roman, Times, serif",
-    Courier: "Courier New, Courier, monospace",
-    "Courier-Bold": "Courier New, Courier, monospace",
-    "Courier-Oblique": "Courier New, Courier, monospace",
-    "Courier-BoldOblique": "Courier New, Courier, monospace",
-    Symbol: "Symbol, serif",
-    ZapfDingbats: "ZapfDingbats, serif",
-  };
-
-  return fontMap[name] ?? "sans-serif";
+  return fontManagerInstance.getFontFamily(pdfFontName);
 }
 
 /**
  * Extract font name from operand (can be string or PdfName).
  */
 function extractFontName(operand: unknown): string {
-  if (typeof operand === "string") {
-    return operand;
-  }
-  if (operand && typeof operand === "object" && "value" in operand) {
-    return String((operand as PdfName).value);
-  }
-  return "";
-}
-
-/**
- * Decode bytes as Latin-1 (ISO-8859-1) string.
- * This is the PDF default encoding for string bytes.
- */
-function decodeLatin1(bytes: Uint8Array): string {
-  // Latin-1 is a direct mapping of byte values 0-255 to Unicode code points
-  let result = "";
-  for (const byte of bytes) {
-    result += String.fromCharCode(byte);
-  }
-  return result;
+  return ContentStreamProcessor.extractFontName(operand);
 }
 
 /**
@@ -1824,20 +1742,7 @@ function decodeLatin1(bytes: Uint8Array): string {
  * @deprecated Use extractTextBytes for proper font encoding support
  */
 function extractTextString(operand: unknown): string {
-  if (typeof operand === "string") {
-    return operand;
-  }
-  if (operand && typeof operand === "object") {
-    // PdfString has asString() method
-    if ("asString" in operand && typeof operand.asString === "function") {
-      return (operand as PdfString).asString();
-    }
-    // Fallback for bytes property
-    if ("bytes" in operand && operand.bytes instanceof Uint8Array) {
-      return decodeLatin1(operand.bytes);
-    }
-  }
-  return "";
+  return ContentStreamProcessor.extractTextString(operand);
 }
 
 /**
@@ -1887,25 +1792,7 @@ function extractTextArrayWithBytes(array: PdfArray): Array<Uint8Array | number> 
  * @deprecated Use extractTextArrayWithBytes for proper font encoding support
  */
 function extractTextArray(array: PdfArray): Array<string | number> {
-  const result: Array<string | number> = [];
-  // Use iterator since items is private
-  for (const item of array) {
-    if (item && typeof item === "object") {
-      // Check for PdfNumber (has value property as number)
-      if ("value" in item && typeof (item as PdfNumber).value === "number") {
-        result.push((item as PdfNumber).value);
-      }
-      // Check for PdfString (has asString method)
-      else if ("asString" in item && typeof item.asString === "function") {
-        result.push(item.asString());
-      }
-      // Fallback for bytes property
-      else if ("bytes" in item && item.bytes instanceof Uint8Array) {
-        result.push(decodeLatin1(item.bytes));
-      }
-    }
-  }
-  return result;
+  return ContentStreamProcessor.extractTextArray(array);
 }
 
 /**

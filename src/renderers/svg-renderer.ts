@@ -16,8 +16,9 @@ import {
 import { Matrix } from "#src/helpers/matrix";
 import type { PdfArray } from "#src/objects/pdf-array";
 import type { PdfName } from "#src/objects/pdf-name";
-import type { PdfNumber } from "#src/objects/pdf-number";
 import type { PdfString } from "#src/objects/pdf-string";
+import { ContentStreamProcessor } from "#src/viewer/ContentStreamProcessor";
+import { FontManager } from "#src/viewer/FontManager";
 
 import type {
   BaseRenderer,
@@ -358,7 +359,7 @@ export class SVGRenderer implements BaseRenderer {
     };
   }
 
-  render(pageIndex: number, viewport: Viewport): RenderTask {
+  render(pageIndex: number, viewport: Viewport, contentBytes?: Uint8Array | null): RenderTask {
     if (!this._initialized) {
       throw new Error("Renderer must be initialized before rendering");
     }
@@ -424,6 +425,9 @@ export class SVGRenderer implements BaseRenderer {
             svg.removeChild(svg.firstChild);
           }
 
+          // Reset graphics state for new render
+          this.resetGraphicsState();
+
           // Create defs element for reusable resources (patterns, gradients, clips)
           this._defs = document.createElementNS(SVG_NS, "defs");
           svg.appendChild(this._defs);
@@ -444,24 +448,27 @@ export class SVGRenderer implements BaseRenderer {
           this._pageGroup = document.createElementNS(SVG_NS, "g");
           this._pageGroup.setAttribute("class", "pdf-page");
 
-          // Build transform string
+          // Build transform string for PDF coordinate system
+          // PDF has origin at bottom-left, SVG at top-left
           const transforms: string[] = [];
+
+          // Scale and flip Y axis to convert PDF coordinates to SVG coordinates
+          // PDF y increases upward, SVG y increases downward
+          transforms.push(`translate(0, ${height})`);
+          transforms.push(`scale(${viewport.scale}, -${viewport.scale})`);
 
           // Handle rotation
           if (viewport.rotation !== 0) {
-            const cx = width / 2;
-            const cy = height / 2;
-            transforms.push(`rotate(${viewport.rotation}, ${cx}, ${cy})`);
-          }
-
-          // Apply scale
-          if (viewport.scale !== 1) {
-            transforms.push(`scale(${viewport.scale})`);
+            const cx = width / viewport.scale / 2;
+            const cy = height / viewport.scale / 2;
+            transforms.push(`rotate(${-viewport.rotation}, ${cx}, ${cy})`);
           }
 
           // Apply offset
           if (viewport.offsetX !== 0 || viewport.offsetY !== 0) {
-            transforms.push(`translate(${viewport.offsetX}, ${viewport.offsetY})`);
+            transforms.push(
+              `translate(${viewport.offsetX / viewport.scale}, ${-viewport.offsetY / viewport.scale})`,
+            );
           }
 
           if (transforms.length > 0) {
@@ -469,6 +476,12 @@ export class SVGRenderer implements BaseRenderer {
           }
 
           svg.appendChild(this._pageGroup);
+
+          // Process content stream if provided
+          if (contentBytes && contentBytes.length > 0) {
+            const operators = ContentStreamProcessor.parseToOperators(contentBytes);
+            this.executeOperators(operators);
+          }
 
           resolve({
             width,
@@ -1581,116 +1594,44 @@ export class SVGRenderer implements BaseRenderer {
 }
 
 // ============================================================================
-// Helper Functions
+// Helper Functions (delegating to ContentStreamProcessor)
 // ============================================================================
 
 /**
  * Convert CMYK to RGB values.
  */
 function cmykToRgb(c: number, m: number, y: number, k: number): [number, number, number] {
-  const r = Math.round(255 * (1 - c) * (1 - k));
-  const g = Math.round(255 * (1 - m) * (1 - k));
-  const b = Math.round(255 * (1 - y) * (1 - k));
-  return [r, g, b];
+  return ContentStreamProcessor.cmykToRgb(c, m, y, k);
 }
 
 /**
  * Map PDF font names to SVG-compatible font families.
+ * Uses a shared FontManager instance.
  */
+const fontManagerInstance = new FontManager();
 function mapPdfFontToSvg(pdfFontName: string): string {
-  // Remove leading slash if present
-  const name = pdfFontName.startsWith("/") ? pdfFontName.slice(1) : pdfFontName;
-
-  // Common PDF base fonts to web fonts
-  const fontMap: Record<string, string> = {
-    Helvetica: "Helvetica, Arial, sans-serif",
-    "Helvetica-Bold": "Helvetica, Arial, sans-serif",
-    "Helvetica-Oblique": "Helvetica, Arial, sans-serif",
-    "Helvetica-BoldOblique": "Helvetica, Arial, sans-serif",
-    "Times-Roman": "'Times New Roman', Times, serif",
-    "Times-Bold": "'Times New Roman', Times, serif",
-    "Times-Italic": "'Times New Roman', Times, serif",
-    "Times-BoldItalic": "'Times New Roman', Times, serif",
-    Courier: "'Courier New', Courier, monospace",
-    "Courier-Bold": "'Courier New', Courier, monospace",
-    "Courier-Oblique": "'Courier New', Courier, monospace",
-    "Courier-BoldOblique": "'Courier New', Courier, monospace",
-    Symbol: "Symbol, serif",
-    ZapfDingbats: "ZapfDingbats, serif",
-  };
-
-  return fontMap[name] ?? "sans-serif";
+  return fontManagerInstance.getFontFamily(pdfFontName);
 }
 
 /**
  * Extract font name from operand (can be string or PdfName).
  */
 function extractFontName(operand: unknown): string {
-  if (typeof operand === "string") {
-    return operand;
-  }
-  if (operand && typeof operand === "object" && "value" in operand) {
-    return String((operand as PdfName).value);
-  }
-  return "";
-}
-
-/**
- * Decode bytes as Latin-1 (ISO-8859-1) string.
- * This is the PDF default encoding for string bytes.
- */
-function decodeLatin1(bytes: Uint8Array): string {
-  // Latin-1 is a direct mapping of byte values 0-255 to Unicode code points
-  let result = "";
-  for (const byte of bytes) {
-    result += String.fromCharCode(byte);
-  }
-  return result;
+  return ContentStreamProcessor.extractFontName(operand);
 }
 
 /**
  * Extract text string from operand (can be string or PdfString).
  */
 function extractTextString(operand: unknown): string {
-  if (typeof operand === "string") {
-    return operand;
-  }
-  if (operand && typeof operand === "object") {
-    // PdfString has asString() method
-    if ("asString" in operand && typeof operand.asString === "function") {
-      return (operand as PdfString).asString();
-    }
-    // Fallback for bytes property
-    if ("bytes" in operand && operand.bytes instanceof Uint8Array) {
-      return decodeLatin1(operand.bytes);
-    }
-  }
-  return "";
+  return ContentStreamProcessor.extractTextString(operand);
 }
 
 /**
  * Extract text array elements (strings and numbers).
  */
 function extractTextArray(array: PdfArray): Array<string | number> {
-  const result: Array<string | number> = [];
-  // Use iterator since items is private
-  for (const item of array) {
-    if (item && typeof item === "object") {
-      // Check for PdfNumber (has value property as number)
-      if ("value" in item && typeof (item as PdfNumber).value === "number") {
-        result.push((item as PdfNumber).value);
-      }
-      // Check for PdfString (has asString method)
-      else if ("asString" in item && typeof item.asString === "function") {
-        result.push(item.asString());
-      }
-      // Fallback for bytes property
-      else if ("bytes" in item && item.bytes instanceof Uint8Array) {
-        result.push(decodeLatin1(item.bytes));
-      }
-    }
-  }
-  return result;
+  return ContentStreamProcessor.extractTextArray(array);
 }
 
 /**

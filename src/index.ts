@@ -680,3 +680,26 @@ export {
   createInitialSearchState,
   createSearchEvent,
 } from "./frontend";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Content Stream Processing
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  ContentStreamProcessor,
+  createContentStreamProcessor,
+  type TextArrayElement,
+} from "./viewer/ContentStreamProcessor";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Font Management
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  FontManager,
+  createFontManager,
+  getGlobalFontManager,
+  type FontMetrics,
+  type LoadedFont,
+  type FontStyle,
+} from "./viewer/FontManager";
