@@ -92,7 +92,7 @@ async function loadPDF(file: File): Promise<void> {
     // Initialize PDF.js if not already done
     // Use CDN worker for browser environment
     await initializePDFJS({
-      workerSrc: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.mjs",
+      workerSrc: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs",
     });
 
     // Load the document using PDF.js

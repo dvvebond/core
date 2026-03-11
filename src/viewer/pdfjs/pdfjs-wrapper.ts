@@ -136,7 +136,7 @@ export async function initializePDFJS(options: PDFJSWrapperOptions = {}): Promis
   } else {
     // Use CDN fallback with the installed version
     // The version property may not be available in all builds
-    const version = (pdfjs as { version?: string }).version || "4.8.69";
+    const version = (pdfjs as { version?: string }).version || "4.10.38";
     pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.mjs`;
   }
 
