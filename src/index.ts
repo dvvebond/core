@@ -485,6 +485,28 @@ export {
 } from "./worker/parsing-utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Authentication and Retry
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  AuthHandler,
+  AuthenticationError,
+  createTokenProvider,
+  type AuthenticatedResponse,
+  type AuthHandlerOptions,
+  type TokenProvider,
+} from "./auth-handler";
+
+export {
+  HttpError,
+  RetryExhaustedError,
+  RetryLogic,
+  RetryPresets,
+  type RetryOptions,
+  type RetryResult,
+} from "./retry-logic";
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Parser Module
 // ─────────────────────────────────────────────────────────────────────────────
 
