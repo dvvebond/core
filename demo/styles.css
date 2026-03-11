@@ -369,25 +369,17 @@ body {
   color: transparent;
 }
 
-/* Highlight layer - sits between canvas and text layer */
-.highlight-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-}
-
-/* Search highlight - green background in highlight layer */
-.search-highlight {
+/* Search highlight - green background with multiply blend */
+.text-layer .highlight {
   background-color: #c5d9c3;
   border-radius: 3px;
+  mix-blend-mode: multiply;
 }
 
 /* Current/selected search result - slightly darker */
-.search-highlight.selected {
+.text-layer .highlight.selected {
   background-color: #a8c9a5;
+  mix-blend-mode: multiply;
 }
 
 
