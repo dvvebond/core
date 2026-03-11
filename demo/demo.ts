@@ -234,16 +234,8 @@ async function initializeViewer(): Promise<void> {
         return;
       }
 
-      // The element from ViewportManager is the rendered canvas
-      // We need to clone it since the renderer reuses its internal canvas
+      // The element from ViewportManager is a cloned canvas (renderer clones it)
       const canvas = event.element as HTMLCanvasElement;
-      const clonedCanvas = document.createElement("canvas");
-      clonedCanvas.width = canvas.width;
-      clonedCanvas.height = canvas.height;
-      const ctx = clonedCanvas.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(canvas, 0, 0);
-      }
 
       // Position and size the container based on layout
       container.style.position = "absolute";
@@ -252,14 +244,14 @@ async function initializeViewer(): Promise<void> {
       container.style.width = `${layout.width}px`;
       container.style.height = `${layout.height}px`;
 
-      // Clear container and add the cloned canvas
+      // Clear container and add the canvas
       container.innerHTML = "";
-      clonedCanvas.style.width = "100%";
-      clonedCanvas.style.height = "100%";
-      clonedCanvas.style.position = "absolute";
-      clonedCanvas.style.left = "0";
-      clonedCanvas.style.top = "0";
-      container.appendChild(clonedCanvas);
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
+      canvas.style.position = "absolute";
+      canvas.style.left = "0";
+      canvas.style.top = "0";
+      container.appendChild(canvas);
 
       // Add text layer for text selection
       const pdfDocument = state.pdfDocument;

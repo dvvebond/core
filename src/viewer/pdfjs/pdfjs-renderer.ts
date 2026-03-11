@@ -396,10 +396,20 @@ export class PDFJSRenderer implements BaseRenderer {
       throw new Error("Render task cancelled");
     }
 
+    // Clone the canvas before returning to prevent race conditions
+    // when multiple pages are rendered in sequence
+    const clonedCanvas = document.createElement("canvas");
+    clonedCanvas.width = canvas.width;
+    clonedCanvas.height = canvas.height;
+    const cloneCtx = clonedCanvas.getContext("2d");
+    if (cloneCtx) {
+      cloneCtx.drawImage(canvas, 0, 0);
+    }
+
     return {
-      width: canvas.width,
-      height: canvas.height,
-      element: canvas,
+      width: clonedCanvas.width,
+      height: clonedCanvas.height,
+      element: clonedCanvas,
     };
   }
 
