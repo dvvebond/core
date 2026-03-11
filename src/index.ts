@@ -745,3 +745,52 @@ export {
   type LoadedFont,
   type FontStyle,
 } from "./viewer/FontManager";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PDF.js Integration
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  // Initialization
+  initializePDFJS,
+  isPDFJSInitialized,
+  getPDFJS,
+  // Document loading
+  loadPDFJSDocument,
+  loadPDFJSDocumentFromUrl,
+  getCurrentPDFJSDocument,
+  closePDFJSDocument,
+  // Page operations
+  getPDFJSPage,
+  getPDFJSPageCount,
+  createPDFJSPageViewport,
+  // Text content
+  getPDFJSTextContent,
+  isPDFJSTextItem,
+  // Renderer
+  PDFJSRenderer,
+  createPDFJSRenderer,
+  // Text layer
+  buildPDFJSTextLayer,
+  PDFJSTextLayerBuilder,
+  createPDFJSTextLayerBuilder,
+  // Search
+  searchPDFJSDocument,
+  PDFJSSearchEngine,
+  createPDFJSSearchEngine,
+  // Types
+  type PDFDocumentProxy,
+  type PDFPageProxy,
+  type PageViewport,
+  type PDFJSTextContent,
+  type PDFJSTextItem,
+  type PDFJSTextMarkedContent,
+  type PDFJSWrapperOptions,
+  type PDFJSLoadDocumentOptions,
+  type PDFJSRendererOptions,
+  type PDFJSTextLayerOptions,
+  type PDFJSTextLayerResult,
+  type PDFJSSearchResult,
+  type PDFJSSearchOptions,
+  type PDFJSSearchState,
+} from "./viewer";

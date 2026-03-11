@@ -72,6 +72,7 @@
     "asn1js": "^3.0.7",
     "lru-cache": "^11.2.6",
     "pako": "^2.1.0",
+    "pdfjs-dist": "^4.8.69",
     "pkijs": "^3.3.3"
   },
   "devDependencies": {

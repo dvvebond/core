@@ -183,3 +183,52 @@ export {
   type IntelligentRendererOptions,
   type IntelligentRenderTask,
 } from "./renderer.ts";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PDF.js Integration
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  // Initialization
+  initializePDFJS,
+  isPDFJSInitialized,
+  getPDFJS,
+  // Document loading
+  loadDocument as loadPDFJSDocument,
+  loadDocumentFromUrl as loadPDFJSDocumentFromUrl,
+  getCurrentDocument as getCurrentPDFJSDocument,
+  closeDocument as closePDFJSDocument,
+  // Page operations
+  getPage as getPDFJSPage,
+  getPageCount as getPDFJSPageCount,
+  createPageViewport as createPDFJSPageViewport,
+  // Text content
+  getTextContent as getPDFJSTextContent,
+  isTextItem as isPDFJSTextItem,
+  // Renderer
+  PDFJSRenderer,
+  createPDFJSRenderer,
+  // Text layer
+  buildPDFJSTextLayer,
+  PDFJSTextLayerBuilder,
+  createPDFJSTextLayerBuilder,
+  // Search
+  searchDocument as searchPDFJSDocument,
+  PDFJSSearchEngine,
+  createPDFJSSearchEngine,
+  // Types
+  type PDFDocumentProxy,
+  type PDFPageProxy,
+  type PageViewport,
+  type TextContent as PDFJSTextContent,
+  type TextItem as PDFJSTextItem,
+  type TextMarkedContent as PDFJSTextMarkedContent,
+  type PDFJSWrapperOptions,
+  type LoadDocumentOptions as PDFJSLoadDocumentOptions,
+  type PDFJSRendererOptions,
+  type PDFJSTextLayerOptions,
+  type PDFJSTextLayerResult,
+  type PDFJSSearchResult,
+  type PDFJSSearchOptions,
+  type PDFJSSearchState,
+} from "./pdfjs";

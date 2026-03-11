@@ -2,22 +2,21 @@
  * LibPDF Viewer Demo
  *
  * A comprehensive demo application showcasing the PDF viewing capabilities
- * of the @libpdf/core library including rendering, navigation, zoom, rotation,
- * and text search functionality.
+ * of the @libpdf/core library using PDF.js for rendering. Includes
+ * navigation, zoom, rotation, and text search functionality.
  */
 
 import {
-  createCanvasRenderer,
-  createSearchEngine,
-  createTextLayerBuilder,
+  createPDFJSRenderer,
+  createPDFJSSearchEngine,
   createVirtualScroller,
   createViewportManager,
-  PDF,
+  initializePDFJS,
+  loadPDFJSDocument,
   type ManagedPage,
   type PageDimensions,
-  type SearchEngine,
-  type SearchResult,
-  type TextProvider,
+  type PDFDocumentProxy,
+  type PDFJSSearchEngine,
   type ViewportManager,
   type VirtualScroller,
 } from "../src";
@@ -27,18 +26,20 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface DemoState {
-  pdf: PDF | null;
+  pdfDocument: PDFDocumentProxy | null;
+  pdfBytes: Uint8Array | null;
   scale: number;
   rotation: number;
   currentPage: number;
   viewportManager: ViewportManager | null;
   virtualScroller: VirtualScroller | null;
-  searchEngine: SearchEngine | null;
+  searchEngine: PDFJSSearchEngine | null;
   pageElements: Map<number, HTMLElement>;
 }
 
 const state: DemoState = {
-  pdf: null,
+  pdfDocument: null,
+  pdfBytes: null,
   scale: 1,
   rotation: 0,
   currentPage: 1,
@@ -86,8 +87,13 @@ async function loadPDF(file: File): Promise<void> {
   try {
     const arrayBuffer = await file.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
+    state.pdfBytes = bytes;
 
-    state.pdf = await PDF.load(bytes);
+    // Initialize PDF.js if not already done
+    await initializePDFJS();
+
+    // Load the document using PDF.js
+    state.pdfDocument = await loadPDFJSDocument(bytes);
 
     setStatus(`Loaded: ${file.name}`);
     await initializeViewer();
@@ -103,14 +109,7 @@ async function loadPDF(file: File): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function initializeViewer(): Promise<void> {
-  console.log(`[DEBUG_INSTRUMENTATION] ${new Date().toISOString()} initializeViewer called`); // [DEBUG_INSTRUMENTATION]
-  try {
-    require("fs").appendFileSync(
-      "/Volumes/dvve/Documents/TheZig/core2/core/.raid/debug_564ac3ff-9ce6-451b-83a8-ab68d91f9ac1.log",
-      `${new Date().toISOString()} demo.ts initializeViewer() called, pdf loaded=${!!state.pdf}\n`,
-    );
-  } catch {} // [DEBUG_INSTRUMENTATION]
-  if (!state.pdf) {
+  if (!state.pdfDocument) {
     return;
   }
 
@@ -124,14 +123,16 @@ async function initializeViewer(): Promise<void> {
   }
 
   // Get page dimensions for virtual scroller
-  const pageCount = state.pdf.getPageCount();
+  const pageCount = state.pdfDocument.numPages;
   const pageDimensions: PageDimensions[] = [];
 
   for (let i = 0; i < pageCount; i++) {
-    const page = state.pdf.getPage(i);
+    // PDF.js uses 1-based page numbers
+    const page = await state.pdfDocument.getPage(i + 1);
+    const viewport = page.getViewport({ scale: 1 });
     pageDimensions.push({
-      width: page.width,
-      height: page.height,
+      width: viewport.width,
+      height: viewport.height,
     });
   }
 
@@ -168,27 +169,22 @@ async function initializeViewer(): Promise<void> {
     }
   });
 
-  // Create shared renderer for viewport manager
-  const renderer = createCanvasRenderer();
-  console.log(
-    `[DEBUG_INSTRUMENTATION] ${new Date().toISOString()} createCanvasRenderer done, initializing...`,
-  ); // [DEBUG_INSTRUMENTATION]
+  // Create PDF.js renderer for viewport manager
+  const renderer = createPDFJSRenderer();
   await renderer.initialize();
-  console.log(`[DEBUG_INSTRUMENTATION] ${new Date().toISOString()} renderer initialized`); // [DEBUG_INSTRUMENTATION]
+
+  // Load the document into the renderer
+  if (state.pdfBytes) {
+    await renderer.loadDocument(state.pdfBytes);
+  }
 
   // Create viewport manager for page rendering
-  console.log(
-    `[DEBUG_INSTRUMENTATION] ${new Date().toISOString()} creating ViewportManager with scroller=${!!state.virtualScroller}, renderer=${!!renderer}`,
-  ); // [DEBUG_INSTRUMENTATION]
   state.viewportManager = createViewportManager({
     scroller: state.virtualScroller,
     renderer: renderer,
     pageSource: createPageSource(),
     maxConcurrentRenders: 3,
   });
-  console.log(
-    `[DEBUG_INSTRUMENTATION] ${new Date().toISOString()} ViewportManager created successfully`,
-  ); // [DEBUG_INSTRUMENTATION]
 
   // Set up scroller events for page tracking
   state.virtualScroller.addEventListener("visiblechange", event => {
@@ -202,17 +198,12 @@ async function initializeViewer(): Promise<void> {
   });
 
   // Set up viewport manager events
-  // The ViewportManager renders pages and provides the rendered element (canvas)
-  // We need to place these canvases into the appropriate page containers
   state.viewportManager.addEventListener("pageRendered", event => {
-    console.log(
-      `[DEBUG_INSTRUMENTATION] pageRendered event: pageIndex=${event.pageIndex}, element=${!!event.element}`,
-    ); // [DEBUG_INSTRUMENTATION]
     if (event.element && state.virtualScroller) {
       // Get page layout from virtual scroller for positioning
       const layout = state.virtualScroller.getPageLayout(event.pageIndex);
       if (!layout) {
-        console.error(`[DEBUG] No layout for page ${event.pageIndex}`);
+        console.error(`No layout for page ${event.pageIndex}`);
         return;
       }
 
@@ -253,17 +244,18 @@ async function initializeViewer(): Promise<void> {
       clonedCanvas.style.width = "100%";
       clonedCanvas.style.height = "100%";
       container.appendChild(clonedCanvas);
+
+      // Highlight search results on this page
+      highlightSearchResults(event.pageIndex, container);
     }
   });
+
   state.viewportManager.addEventListener("pageStateChange", event => {
-    console.log(
-      `[DEBUG_INSTRUMENTATION] pageStateChange: pageIndex=${event.pageIndex}, state=${event.state}`,
-    ); // [DEBUG_INSTRUMENTATION]
+    console.log(`Page ${event.pageIndex} state: ${event.state}`);
   });
+
   state.viewportManager.addEventListener("pageError", event => {
-    console.log(
-      `[DEBUG_INSTRUMENTATION] pageError: pageIndex=${event.pageIndex}, error=${event.error}`,
-    ); // [DEBUG_INSTRUMENTATION]
+    console.error(`Page ${event.pageIndex} error:`, event.error);
   });
 
   // Initialize search engine
@@ -274,130 +266,35 @@ async function initializeViewer(): Promise<void> {
   updatePageControls();
 
   // Initialize viewport manager (loads page dimensions and triggers initial render)
-  console.log(
-    `[DEBUG_INSTRUMENTATION] ${new Date().toISOString()} calling viewportManager.initialize()`,
-  ); // [DEBUG_INSTRUMENTATION]
   await state.viewportManager.initialize();
-  console.log(
-    `[DEBUG_INSTRUMENTATION] ${new Date().toISOString()} viewportManager.initialize() complete, managedPageCount=${state.viewportManager.managedPageCount}`,
-  ); // [DEBUG_INSTRUMENTATION]
 }
 
 function createPageSource() {
   return {
-    getPageCount: () => state.pdf?.getPageCount() ?? 0,
+    getPageCount: () => state.pdfDocument?.numPages ?? 0,
     getPageDimensions: async (pageIndex: number) => {
-      const page = state.pdf?.getPage(pageIndex);
-      if (!page) {
+      if (!state.pdfDocument) {
         return { width: 0, height: 0 };
       }
-      return { width: page.width, height: page.height };
+      const page = await state.pdfDocument.getPage(pageIndex + 1);
+      const viewport = page.getViewport({ scale: 1 });
+      return { width: viewport.width, height: viewport.height };
     },
     getPageRotation: async (pageIndex: number) => {
-      const page = state.pdf?.getPage(pageIndex);
-      return page?.rotate ?? 0;
+      if (!state.pdfDocument) {
+        return 0;
+      }
+      const page = await state.pdfDocument.getPage(pageIndex + 1);
+      return page.rotate ?? 0;
     },
-    getPageContentBytes: async (pageIndex: number): Promise<Uint8Array | null> => {
-      const page = state.pdf?.getPage(pageIndex);
-      if (!page) {
-        return null;
-      }
-      try {
-        const bytes = page.getContentBytes();
-        console.log(`[DEBUG] getPageContentBytes(${pageIndex}): ${bytes.length} bytes`);
-        return bytes;
-      } catch (err) {
-        console.error(`[DEBUG] Error getting content bytes for page ${pageIndex}:`, err);
-        return null;
-      }
+    // PDF.js handles content rendering internally, so we don't need these
+    getPageContentBytes: async (_pageIndex: number): Promise<Uint8Array | null> => {
+      return null;
     },
-    getPageFontResolver: async (pageIndex: number) => {
-      const page = state.pdf?.getPage(pageIndex);
-      if (!page) {
-        return null;
-      }
-      try {
-        const resolver = page.createFontResolver();
-        console.log(`[DEBUG] getPageFontResolver(${pageIndex}): resolver created`);
-        return resolver;
-      } catch (err) {
-        console.error(`[DEBUG] Error creating font resolver for page ${pageIndex}:`, err);
-        return null;
-      }
-    },
-    createPageElement: (pageIndex: number): HTMLElement => {
-      const container = document.createElement("div");
-      container.className = "page-container";
-      container.dataset.pageIndex = String(pageIndex);
-
-      const page = state.pdf?.getPage(pageIndex);
-      if (page) {
-        const scaledWidth = page.width * state.scale;
-        const scaledHeight = page.height * state.scale;
-        container.style.width = `${scaledWidth}px`;
-        container.style.height = `${scaledHeight}px`;
-      }
-
-      // Add loading indicator
-      const loading = document.createElement("div");
-      loading.className = "page-loading";
-      loading.textContent = `Page ${pageIndex + 1}`;
-      container.appendChild(loading);
-
-      state.pageElements.set(pageIndex, container);
-      return container;
-    },
-    destroyPageElement: (pageIndex: number) => {
-      state.pageElements.delete(pageIndex);
+    getPageFontResolver: async (_pageIndex: number) => {
+      return null;
     },
   };
-}
-
-async function renderPage(pageIndex: number, container: HTMLElement): Promise<void> {
-  if (!state.pdf) {
-    return;
-  }
-
-  try {
-    const page = state.pdf.getPage(pageIndex);
-
-    // Create canvas renderer
-    const renderer = createCanvasRenderer();
-    await renderer.initialize();
-
-    // Create viewport
-    const viewport = renderer.createViewport(
-      page.width,
-      page.height,
-      page.rotation + state.rotation,
-      state.scale,
-    );
-
-    // Render to canvas
-    const result = await renderer.render(page, { viewport });
-
-    // Clear container and add canvas
-    container.innerHTML = "";
-    container.appendChild(result.element);
-
-    // Add text layer for selection
-    try {
-      const textLayerBuilder = createTextLayerBuilder();
-      const textLayer = await textLayerBuilder.build(page, viewport);
-      if (textLayer.element) {
-        textLayer.element.className = "text-layer";
-        container.appendChild(textLayer.element);
-      }
-    } catch {
-      // Text layer is optional, continue without it
-    }
-
-    // Highlight search results on this page
-    highlightSearchResults(pageIndex, container);
-  } catch (error) {
-    console.error(`Failed to render page ${pageIndex + 1}:`, error);
-    container.innerHTML = `<div class="page-error">Failed to render page ${pageIndex + 1}</div>`;
-  }
 }
 
 function cleanupViewer(): void {
@@ -422,11 +319,11 @@ function cleanupViewer(): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function goToPage(pageNumber: number): void {
-  if (!state.pdf || !state.virtualScroller) {
+  if (!state.pdfDocument || !state.virtualScroller) {
     return;
   }
 
-  const pageCount = state.pdf.getPageCount();
+  const pageCount = state.pdfDocument.numPages;
   const clampedPage = Math.max(1, Math.min(pageNumber, pageCount));
 
   state.currentPage = clampedPage;
@@ -435,11 +332,11 @@ function goToPage(pageNumber: number): void {
 }
 
 function updatePageControls(): void {
-  if (!state.pdf) {
+  if (!state.pdfDocument) {
     return;
   }
 
-  const pageCount = state.pdf.getPageCount();
+  const pageCount = state.pdfDocument.numPages;
   elements.pageInput.value = String(state.currentPage);
   elements.pageInput.max = String(pageCount);
   elements.pageCount.textContent = String(pageCount);
@@ -492,28 +389,30 @@ function zoomOut(): void {
   setScale(state.scale / 1.25);
 }
 
-function fitWidth(): void {
-  if (!state.pdf || !state.virtualScroller) {
+async function fitWidth(): Promise<void> {
+  if (!state.pdfDocument || !state.virtualScroller) {
     return;
   }
 
-  const page = state.pdf.getPage(state.currentPage - 1);
+  const page = await state.pdfDocument.getPage(state.currentPage);
+  const viewport = page.getViewport({ scale: 1 });
   const containerWidth = elements.viewer.clientWidth - 40; // Account for padding
-  const newScale = containerWidth / page.width;
+  const newScale = containerWidth / viewport.width;
   setScale(newScale);
 }
 
-function fitPage(): void {
-  if (!state.pdf || !state.virtualScroller) {
+async function fitPage(): Promise<void> {
+  if (!state.pdfDocument || !state.virtualScroller) {
     return;
   }
 
-  const page = state.pdf.getPage(state.currentPage - 1);
+  const page = await state.pdfDocument.getPage(state.currentPage);
+  const viewport = page.getViewport({ scale: 1 });
   const containerWidth = elements.viewer.clientWidth - 40;
   const containerHeight = elements.viewer.clientHeight - 40;
 
-  const scaleX = containerWidth / page.width;
-  const scaleY = containerHeight / page.height;
+  const scaleX = containerWidth / viewport.width;
+  const scaleY = containerHeight / viewport.height;
   setScale(Math.min(scaleX, scaleY));
 }
 
@@ -535,39 +434,18 @@ function rotate(degrees: number): void {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function initializeSearch(): void {
-  if (!state.pdf) {
+  if (!state.pdfDocument) {
     return;
   }
 
-  const textProvider: TextProvider = {
-    getPageCount: () => state.pdf?.getPageCount() ?? 0,
-    getPageText: async (pageIndex: number) => {
-      if (!state.pdf) {
-        return null;
-      }
-      try {
-        const page = state.pdf.getPage(pageIndex);
-        const text = await page.extractText();
-        return text.map(item => item.text).join("");
-      } catch {
-        return null;
-      }
-    },
-    getCharBounds: async () => {
-      // Return empty bounds for now - search highlighting uses result bounds
-      return [];
-    },
-  };
+  state.searchEngine = createPDFJSSearchEngine();
+  state.searchEngine.setDocument(state.pdfDocument);
 
-  state.searchEngine = createSearchEngine({ textProvider });
-
-  state.searchEngine.addEventListener("search-complete", event => {
+  state.searchEngine.addListener(searchState => {
     updateSearchResults();
-  });
-
-  state.searchEngine.addEventListener("result-change", () => {
-    updateSearchResults();
-    scrollToCurrentResult();
+    if (!searchState.searching && searchState.results.length > 0) {
+      scrollToCurrentResult();
+    }
   });
 }
 
@@ -599,11 +477,12 @@ function updateSearchResults(): void {
     return;
   }
 
-  const count = state.searchEngine.resultCount;
-  const current = state.searchEngine.currentIndex;
+  const searchState = state.searchEngine.state;
+  const count = searchState.results.length;
+  const current = searchState.currentIndex;
 
   if (count === 0) {
-    elements.searchResults.textContent = state.searchEngine.query ? "No results" : "";
+    elements.searchResults.textContent = searchState.query ? "No results" : "";
   } else {
     elements.searchResults.textContent = `${current + 1} of ${count}`;
   }
@@ -637,13 +516,13 @@ function highlightSearchResults(pageIndex: number, container: HTMLElement): void
     }
 
     // Position highlight based on bounds
-    const bounds = result.bounds;
-    highlight.style.left = `${bounds.x * state.scale}px`;
-    highlight.style.top = `${bounds.y * state.scale}px`;
-    highlight.style.width = `${bounds.width * state.scale}px`;
-    highlight.style.height = `${bounds.height * state.scale}px`;
-
-    container.appendChild(highlight);
+    if (result.bounds) {
+      highlight.style.left = `${result.bounds.x * state.scale}px`;
+      highlight.style.top = `${result.bounds.y * state.scale}px`;
+      highlight.style.width = `${result.bounds.width * state.scale}px`;
+      highlight.style.height = `${result.bounds.height * state.scale}px`;
+      container.appendChild(highlight);
+    }
   }
 }
 
@@ -724,7 +603,7 @@ function setupEventHandlers(): void {
   elements.btnFirst.addEventListener("click", () => goToPage(1));
   elements.btnPrev.addEventListener("click", () => goToPage(state.currentPage - 1));
   elements.btnNext.addEventListener("click", () => goToPage(state.currentPage + 1));
-  elements.btnLast.addEventListener("click", () => goToPage(state.pdf?.getPageCount() ?? 1));
+  elements.btnLast.addEventListener("click", () => goToPage(state.pdfDocument?.numPages ?? 1));
 
   elements.pageInput.addEventListener("change", () => {
     const page = parseInt(elements.pageInput.value, 10);
@@ -749,9 +628,9 @@ function setupEventHandlers(): void {
   elements.zoomSelect.addEventListener("change", () => {
     const value = elements.zoomSelect.value;
     if (value === "fit-width") {
-      fitWidth();
+      void fitWidth();
     } else if (value === "fit-page") {
-      fitPage();
+      void fitPage();
     } else {
       const scale = parseFloat(value);
       if (!isNaN(scale)) {
@@ -813,7 +692,7 @@ function setupEventHandlers(): void {
         event.preventDefault();
         break;
       case "End":
-        goToPage(state.pdf?.getPageCount() ?? 1);
+        goToPage(state.pdfDocument?.numPages ?? 1);
         event.preventDefault();
         break;
       case "+":
