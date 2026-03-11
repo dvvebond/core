@@ -1913,3 +1913,152 @@
 2026-03-11T13:37:13.650Z CanvasRenderer.render() pageIndex=0, hasContent=true, contentLength=7201, hasFontResolver=true
 2026-03-11T13:37:47.531Z CanvasRenderer.render() pageIndex=0, hasContent=true, contentLength=7201, hasFontResolver=true
 2026-03-11T13:37:47.576Z CanvasRenderer.render() done, canvas 893x1263
+2026-03-11T13:48:31.149Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:48:31.155Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:56:05.118Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:56:05.127Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:43.034Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.064Z ViewportManager.startPageRender() pageIndex=1, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.075Z render complete pageIndex=0
+2026-03-11T13:57:43.076Z render complete pageIndex=1
+2026-03-11T13:57:43.151Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.163Z render complete pageIndex=0
+2026-03-11T13:57:43.178Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.190Z render complete pageIndex=0
+2026-03-11T13:57:43.203Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.213Z render complete pageIndex=0
+2026-03-11T13:57:43.228Z ViewportManager.startPageRender() pageIndex=1, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.245Z render complete pageIndex=1
+2026-03-11T13:57:43.257Z ViewportManager.startPageRender() pageIndex=2, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.269Z render complete pageIndex=2
+2026-03-11T13:57:43.282Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.292Z render complete pageIndex=0
+2026-03-11T13:57:43.311Z ViewportManager.startPageRender() pageIndex=1, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.327Z render complete pageIndex=1
+2026-03-11T13:57:43.334Z ViewportManager.startPageRender() pageIndex=3, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.347Z render complete pageIndex=3
+2026-03-11T13:57:43.364Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.376Z render complete pageIndex=0
+2026-03-11T13:57:43.389Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.398Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.399Z ViewportManager.startPageRender() pageIndex=1, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.400Z ViewportManager.startPageRender() pageIndex=2, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.405Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.411Z render complete pageIndex=0
+2026-03-11T13:57:43.411Z render complete pageIndex=1
+2026-03-11T13:57:43.411Z render complete pageIndex=2
+2026-03-11T13:57:43.416Z render complete pageIndex=0
+2026-03-11T13:57:43.428Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.429Z ViewportManager.startPageRender() pageIndex=1, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.440Z render complete pageIndex=0
+2026-03-11T13:57:43.440Z render complete pageIndex=1
+2026-03-11T13:57:43.501Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.512Z render complete pageIndex=0
+2026-03-11T13:57:43.544Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.561Z render complete pageIndex=0
+2026-03-11T13:57:43.579Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.623Z render complete pageIndex=0
+2026-03-11T13:57:43.640Z ViewportManager.startPageRender() pageIndex=1, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.659Z render complete pageIndex=1
+2026-03-11T13:57:43.672Z ViewportManager.startPageRender() pageIndex=2, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.683Z render complete pageIndex=2
+2026-03-11T13:57:43.695Z ViewportManager.startPageRender() pageIndex=3, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.706Z render complete pageIndex=3
+2026-03-11T13:57:43.719Z ViewportManager.startPageRender() pageIndex=4, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.743Z render complete pageIndex=4
+2026-03-11T13:57:43.743Z ViewportManager.startPageRender() pageIndex=5, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.756Z render complete pageIndex=5
+2026-03-11T13:57:43.767Z ViewportManager.startPageRender() pageIndex=6, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.778Z render complete pageIndex=6
+2026-03-11T13:57:43.789Z ViewportManager.startPageRender() pageIndex=7, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.802Z render complete pageIndex=7
+2026-03-11T13:57:43.814Z ViewportManager.startPageRender() pageIndex=8, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.827Z render complete pageIndex=8
+2026-03-11T13:57:43.842Z ViewportManager.startPageRender() pageIndex=9, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.856Z render complete pageIndex=9
+2026-03-11T13:57:43.874Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.909Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.916Z ViewportManager.startPageRender() pageIndex=1, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.968Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:43.969Z ViewportManager.startPageRender() pageIndex=1, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.023Z render complete pageIndex=0
+2026-03-11T13:57:44.024Z ViewportManager.startPageRender() pageIndex=2, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.024Z render complete pageIndex=1
+2026-03-11T13:57:44.025Z ViewportManager.startPageRender() pageIndex=3, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.075Z render complete pageIndex=2
+2026-03-11T13:57:44.076Z ViewportManager.startPageRender() pageIndex=4, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.081Z render complete pageIndex=3
+2026-03-11T13:57:44.129Z render complete pageIndex=4
+2026-03-11T13:57:44.303Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.315Z render complete pageIndex=0
+2026-03-11T13:57:44.337Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.338Z ViewportManager.startPageRender() pageIndex=1, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.359Z render complete pageIndex=0
+2026-03-11T13:57:44.370Z render complete pageIndex=1
+2026-03-11T13:57:44.401Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.412Z render complete pageIndex=0
+2026-03-11T13:57:44.424Z ViewportManager.startPageRender() pageIndex=1, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.435Z render complete pageIndex=1
+2026-03-11T13:57:44.451Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.463Z render complete pageIndex=0
+2026-03-11T13:57:44.481Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.496Z render complete pageIndex=0
+2026-03-11T13:57:44.506Z ViewportManager.startPageRender() pageIndex=1, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.518Z render complete pageIndex=1
+2026-03-11T13:57:44.587Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.587Z ViewportManager.startPageRender() pageIndex=1, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.679Z ViewportManager.startPageRender() pageIndex=9, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.690Z render complete pageIndex=9
+2026-03-11T13:57:44.692Z ViewportManager.startPageRender() pageIndex=8, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.707Z render complete pageIndex=8
+2026-03-11T13:57:44.708Z ViewportManager.startPageRender() pageIndex=10, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.719Z render complete pageIndex=10
+2026-03-11T13:57:44.720Z ViewportManager.startPageRender() pageIndex=11, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.736Z render complete pageIndex=11
+2026-03-11T13:57:44.891Z ViewportManager.startPageRender() pageIndex=0, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.902Z render complete pageIndex=0
+2026-03-11T13:57:44.914Z ViewportManager.startPageRender() pageIndex=2, hasContent=false, hasFontResolver=false
+2026-03-11T13:57:44.929Z render complete pageIndex=2
+2026-03-11T13:57:55.091Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.217Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.221Z CanvasRenderer.render() pageIndex=1, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.222Z CanvasRenderer.render() pageIndex=2, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.239Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.239Z CanvasRenderer.render() pageIndex=1, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.240Z CanvasRenderer.render() pageIndex=2, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.243Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.243Z CanvasRenderer.render() pageIndex=1, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.244Z CanvasRenderer.render() pageIndex=2, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.245Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.246Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.247Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.247Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.248Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.248Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.249Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.249Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.250Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.250Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.250Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.258Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.260Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.261Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.261Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:57:59.459Z CanvasRenderer.render() pageIndex=0, hasContent=true, contentLength=0, hasFontResolver=true
+2026-03-11T13:57:59.461Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=true
+2026-03-11T13:58:12.665Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:58:13.953Z CanvasRenderer.render() pageIndex=0, hasContent=true, contentLength=25, hasFontResolver=false
+2026-03-11T13:58:13.961Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:58:13.962Z CanvasRenderer.render() pageIndex=0, hasContent=true, contentLength=25, hasFontResolver=false
+2026-03-11T13:58:13.967Z CanvasRenderer.render() pageIndex=0, hasContent=true, contentLength=15, hasFontResolver=false
+2026-03-11T13:58:14.905Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:58:14.933Z CanvasRenderer.render() pageIndex=1, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:58:14.952Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:58:14.958Z CanvasRenderer.render() pageIndex=1, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:58:14.958Z CanvasRenderer.render() pageIndex=2, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:58:14.959Z CanvasRenderer.render() pageIndex=3, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:58:14.959Z CanvasRenderer.render() pageIndex=4, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:58:15.285Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:58:15.309Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:58:19.568Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
+2026-03-11T13:58:19.618Z CanvasRenderer.render() pageIndex=0, hasContent=false, contentLength=0, hasFontResolver=false
