@@ -411,17 +411,6 @@ export class CanvasRenderer implements TypeAwareRenderer {
     contentBytes?: Uint8Array | null,
     fontResolver?: FontResolver | null,
   ): RenderTask {
-    try {
-      require("fs").appendFileSync(
-        "/Volumes/dvve/Documents/TheZig/core2/core/.raid/debug_564ac3ff-9ce6-451b-83a8-ab68d91f9ac1.log",
-        `${new Date().toISOString()} CanvasRenderer.render() pageIndex=${pageIndex}, hasContent=${!!contentBytes}, contentLength=${contentBytes?.length ?? 0}, hasFontResolver=${!!fontResolver}\n`,
-      );
-    } catch {
-      console.log(
-        `[DEBUG] CanvasRenderer.render() pageIndex=${pageIndex}, hasContent=${!!contentBytes}, hasFontResolver=${!!fontResolver}`,
-      );
-    } // [DEBUG_INSTRUMENTATION]
-
     // Store the font resolver for use during rendering
     this._fontResolver = fontResolver ?? null;
 
@@ -511,7 +500,6 @@ export class CanvasRenderer implements TypeAwareRenderer {
             try {
               // Parse content stream to operators
               const operators = this.parseContentToOperators(contentBytes);
-              console.log(`[DEBUG] Parsed ${operators.length} operators from content stream`);
 
               // Store the page height for coordinate transformation
               // PDF uses bottom-left origin, canvas uses top-left
@@ -529,8 +517,7 @@ export class CanvasRenderer implements TypeAwareRenderer {
 
               // Execute all operators to render the page
               this.executeOperators(operators);
-            } catch (err) {
-              console.error(`[DEBUG] Error rendering content:`, err);
+            } catch {
               // Fall through to show placeholder on error
             }
           } else {
@@ -551,15 +538,6 @@ export class CanvasRenderer implements TypeAwareRenderer {
           }
 
           context.restore();
-
-          try {
-            require("fs").appendFileSync(
-              "/Volumes/dvve/Documents/TheZig/core2/core/.raid/debug_564ac3ff-9ce6-451b-83a8-ab68d91f9ac1.log",
-              `${new Date().toISOString()} CanvasRenderer.render() done, canvas ${canvas.width}x${canvas.height}\n`,
-            );
-          } catch {
-            console.log(`[DEBUG] render done, canvas ${canvas.width}x${canvas.height}`);
-          } // [DEBUG_INSTRUMENTATION]
 
           resolve({
             width: canvas.width,
