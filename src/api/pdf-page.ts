@@ -128,6 +128,8 @@ import { getPlainText, groupCharsIntoLines } from "#src/text/line-grouper";
 import { TextExtractor } from "#src/text/text-extractor";
 import { searchPage } from "#src/text/text-search";
 import type { ExtractTextOptions, FindTextOptions, PageText, TextMatch } from "#src/text/types";
+import { buildPageRenderPlan } from "#src/viewer/page-render-plan";
+import type { PageRenderPlan } from "#src/viewer/types";
 
 import type { PDFContext } from "./pdf-context";
 import type { PDFEmbeddedPage } from "./pdf-embedded-page";
@@ -2836,6 +2838,25 @@ export class PDFPage {
       lines,
       text,
     };
+  }
+
+  /**
+   * Build a LibPDF-native render plan for this page.
+   *
+   * The plan is a display list that can be executed by a custom viewer
+   * without importing pdf.js. It captures common vector paths, image XObjects,
+   * gradients, clipping, form XObjects, and graphics-state styling.
+   */
+  buildRenderPlan(): PageRenderPlan {
+    return buildPageRenderPlan({
+      pageIndex: this.index,
+      width: this.width,
+      height: this.height,
+      rotation: this.rotation,
+      contentBytes: this.getContentBytes(),
+      resources: this.resolveInheritedResources(),
+      resolve: this.ctx.resolve.bind(this.ctx),
+    });
   }
 
   /**

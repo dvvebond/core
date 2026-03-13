@@ -227,6 +227,26 @@ export type {
 } from "./drawing/resources/index";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Viewer / Rendering
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  buildPageRenderPlan,
+  type PageRenderPlan,
+  type RenderClipPath,
+  type RenderColor,
+  type RenderCommand,
+  type RenderImage,
+  type RenderImageCommand,
+  type RenderJpegImage,
+  type RenderPathCommand,
+  type RenderPathSegment,
+  type RenderRawImage,
+  type RenderShading,
+  type RenderShadingCommand,
+} from "./viewer/index";
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 

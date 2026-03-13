@@ -16,14 +16,14 @@ It does **not** import:
 - `TextLayerBuilder`
 - `AnnotationLayerBuilder`
 
-Instead, it uses **LibPDF only** to parse a document and extract structured page text and
-annotations, then rebuilds the visible pages as positioned HTML.
+Instead, it uses **LibPDF only** to parse a document, build a LibPDF-native render plan for common
+paint operators, and layer extracted text plus annotations on top.
 
-<Callout type="warn" title="What This Can And Cannot Do">
-  This is a genuine viewer implementation built without `pdf.js`, but it is not full PDF visual
-  fidelity. It can render extractable text, page geometry, search highlights, and annotation regions.
-  It cannot yet rasterize images, vector drawing operators, shadings, or arbitrary graphics because
-  LibPDF does not currently include a browser rendering engine for those operators.
+<Callout type="info" title="What This Demo Now Renders">
+  The standalone LibPDF path now paints vector paths, image XObjects, gradients, clipping, and Form
+  XObjects on canvas, then adds a searchable text overlay and annotation regions on top. Unsupported
+  operators are reported per document as runtime render warnings instead of being hidden behind a
+  generic limitation banner.
 </Callout>
 
 <LibPDFNoPdfJsViewerDemo />
@@ -34,12 +34,12 @@ The no-`pdf.js` pipeline in this repo is:
 
 1. Browser uploads the PDF or loads the sample file
 2. Next.js route parses the bytes with LibPDF
-3. LibPDF extracts page text lines, spans, metadata, and annotations
-4. The browser lays out each page as absolute-positioned HTML
-5. Search highlights are applied to matching extracted spans
+3. LibPDF builds a render plan from page content streams, XObjects, graphics state, and gradients
+4. The browser executes that render plan on canvas
+5. The browser overlays extracted text, search highlights, and annotations
 
-That means this implementation is closer to a document reconstruction engine than a classic raster
-viewer.
+That means this implementation now has a real display layer instead of only an HTML reconstruction
+layer.
 
 ## Why this exists
 
@@ -49,19 +49,5 @@ path. This page is that implementation.
 It is useful for:
 
 - validating that LibPDF has enough parsing APIs to support viewing features
-- proving that a basic viewer can exist without Mozilla's rendering stack
-- identifying the exact missing engine pieces needed for full visual fidelity
-
-## What a full LibPDF-native viewer would still need
-
-To move this from text-first HTML reconstruction into a complete viewer, LibPDF would need to grow a
-real rendering engine for:
-
-1. path painting operators
-2. XObject/image rendering
-3. font glyph painting beyond extracted text geometry
-4. clipping, transparency, blend modes, and patterns
-5. a page display list or canvas backend
-
-That is the real technical gap between "parse and reconstruct text" and "fully render arbitrary
-PDFs."
+- proving that a custom viewer can exist without Mozilla's rendering stack
+- surfacing the exact remaining edge cases as concrete render warnings

@@ -1,5 +1,6 @@
 "use client";
 
+import { renderViewerPageToCanvas } from "@/lib/no-pdfjs-renderer";
 import type {
   ViewerAnnotation,
   ViewerDocument,
@@ -200,6 +201,7 @@ function AnnotationOverlay({
 export function LibPDFNoPdfJsViewerDemo() {
   const fileInputId = useId();
   const pageRefs = useRef<Record<number, HTMLElement | null>>({});
+  const canvasRefs = useRef<Record<number, HTMLCanvasElement | null>>({});
 
   const [documentData, setDocumentData] = useState<ViewerDocument | null>(null);
   const [status, setStatus] = useState<DemoStatus>("idle");
@@ -283,6 +285,37 @@ export function LibPDFNoPdfJsViewerDemo() {
   const pageMatches = pages.map(page => countMatches(page, deferredQuery));
   const totalMatches = pageMatches.reduce((sum, current) => sum + current, 0);
   const firstMatchPage = pageMatches.findIndex(count => count > 0);
+  const totalRenderWarnings = pages.reduce((sum, page) => sum + page.renderPlan.warnings.length, 0);
+
+  useEffect(() => {
+    if (status !== "ready") {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function renderPages() {
+      for (const page of pages) {
+        const canvas = canvasRefs.current[page.pageIndex];
+
+        if (!canvas || cancelled) {
+          continue;
+        }
+
+        await renderViewerPageToCanvas(canvas, page, zoom);
+      }
+    }
+
+    void renderPages().catch(currentError => {
+      if (!cancelled) {
+        console.error("Failed to render LibPDF page plan", currentError);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pages, status, zoom]);
 
   function scrollToPage(pageIndex: number) {
     const pageElement = pageRefs.current[pageIndex];
@@ -304,12 +337,12 @@ export function LibPDFNoPdfJsViewerDemo() {
               No pdf.js anywhere in this path
             </div>
             <h3 className="mt-4 font-serif text-3xl tracking-tight text-foreground">
-              A standalone LibPDF-only viewer rebuilt as HTML from extracted page geometry
+              A standalone LibPDF-only viewer with a native canvas render plan
             </h3>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               This version does not import `pdf.js`, its worker, or its viewer layer. The server
-              parses the PDF with LibPDF, returns page text geometry, and the browser reconstructs a
-              readable viewer with absolute-positioned HTML, search, and annotation overlays.
+              parses the PDF with LibPDF, returns a LibPDF-native render plan plus text geometry,
+              and the browser paints canvas pages with searchable text and annotation overlays.
             </p>
           </div>
 
@@ -323,13 +356,13 @@ export function LibPDFNoPdfJsViewerDemo() {
             <div className="rounded-2xl border border-black/5 bg-white/80 px-4 py-3 dark:border-white/10 dark:bg-white/5">
               <div>Renderer</div>
               <div className="mt-2 text-base font-semibold tracking-normal text-foreground">
-                HTML text layout
+                Canvas + HTML text
               </div>
             </div>
             <div className="rounded-2xl border border-black/5 bg-white/80 px-4 py-3 dark:border-white/10 dark:bg-white/5">
               <div>Scope</div>
               <div className="mt-2 text-base font-semibold tracking-normal text-foreground">
-                text-first pages
+                paths, images, text
               </div>
             </div>
           </div>
@@ -448,7 +481,12 @@ export function LibPDFNoPdfJsViewerDemo() {
           <span>
             {deferredQuery
               ? `${totalMatches} span matches`
-              : "Search highlights spans, not rasterized glyphs"}
+              : "Search highlights the extracted text overlay"}
+          </span>
+          <span>
+            {totalRenderWarnings > 0
+              ? `${totalRenderWarnings} render warnings`
+              : "No render warnings in this document"}
           </span>
         </div>
 
@@ -531,10 +569,10 @@ export function LibPDFNoPdfJsViewerDemo() {
           </div>
 
           <div className="mt-4 rounded-[22px] border border-amber-300/70 bg-amber-50/80 p-4 text-sm leading-6 text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-100">
-            This demo is intentionally honest about scope. It renders extractable text and
-            annotation rectangles from LibPDF only. Images, vector graphics, gradients, and
-            arbitrary paint operators are not rasterized here because that engine does not exist in
-            LibPDF yet.
+            This viewer now composites a LibPDF-native canvas render plan with searchable text and
+            annotation overlays. If a document hits unsupported operators, the warning count above
+            reflects the exact gaps from the current renderer instead of hiding them behind a
+            blanket limitation.
           </div>
         </aside>
 
@@ -545,6 +583,7 @@ export function LibPDFNoPdfJsViewerDemo() {
                 const pageWidth = page.width * zoom;
                 const pageHeight = page.height * zoom;
                 const pageMatchCount = countMatches(page, deferredQuery);
+                const pageWarningCount = page.renderPlan.warnings.length;
 
                 return (
                   <section
@@ -557,6 +596,7 @@ export function LibPDFNoPdfJsViewerDemo() {
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-1 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                       <span>Page {page.pageIndex + 1}</span>
                       <span>{pageMatchCount} matches</span>
+                      <span>{pageWarningCount} warnings</span>
                       <span>{page.rotation} deg rotation</span>
                     </div>
 
@@ -564,12 +604,19 @@ export function LibPDFNoPdfJsViewerDemo() {
                       className="relative mx-auto overflow-hidden rounded-[22px] border border-black/10 bg-[#fffdfa] shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:border-white/10 dark:bg-[#f7f3ea]"
                       style={{ width: pageWidth, height: pageHeight }}
                     >
-                      <div className="absolute inset-0 bg-[linear-gradient(transparent_31px,rgba(80,65,40,0.04)_32px)] bg-[size:100%_32px] opacity-40" />
+                      <div className="absolute inset-0 bg-[linear-gradient(transparent_31px,rgba(80,65,40,0.04)_32px)] bg-[size:100%_32px] opacity-20" />
 
-                      {page.lines.length === 0 ? (
+                      <canvas
+                        ref={node => {
+                          canvasRefs.current[page.pageIndex] = node;
+                        }}
+                        className="absolute inset-0 h-full w-full"
+                      />
+
+                      {page.lines.length === 0 && page.renderPlan.commands.length === 0 ? (
                         <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                          This page has no extractable text. A no-`pdf.js` HTML viewer cannot show
-                          image-only or graphics-only content without a dedicated rendering engine.
+                          This page has no extractable text and no paint commands were emitted by
+                          the current LibPDF renderer.
                         </div>
                       ) : null}
 
