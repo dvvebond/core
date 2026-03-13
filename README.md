@@ -38,6 +38,7 @@ We kept adding workarounds. A patch here for a malformed xref table. A hack ther
 | Merge & Split      | Yes    | Combine or extract pages                   |
 | Attachments        | Yes    | Embed and extract files                    |
 | Text Extraction    | Yes    | With position information                  |
+| Browser Viewing    | Yes    | Custom `pdf.js`-powered viewer in docs app |
 | Font Embedding     | Yes    | TTF/OpenType with subsetting               |
 | Images             | Yes    | JPEG, PNG (with alpha)                     |
 | Incremental Saves  | Yes    | Append changes, preserve signatures        |

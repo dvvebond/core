@@ -172,3 +172,189 @@
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
 }
+
+.libpdf-demo-viewer {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--foreground) 16%, transparent) transparent;
+}
+
+.libpdf-demo-viewer .pdfViewer {
+  --scale-factor: 1;
+}
+
+.libpdf-demo-viewer .canvasWrapper {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.libpdf-demo-viewer .canvasWrapper canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.libpdf-demo-viewer .page {
+  --user-unit: 1;
+  --total-scale-factor: calc(var(--scale-factor) * var(--user-unit));
+  --annotation-unfocused-field-background: url("data:image/svg+xml;charset=UTF-8,<svg width='1px' height='1px' xmlns='http://www.w3.org/2000/svg'><rect width='100%' height='100%' style='fill:rgba(0, 54, 255, 0.13);'/></svg>");
+  --input-focus-border-color: Highlight;
+  --input-focus-outline: 1px solid Canvas;
+  --input-unfocused-border-color: transparent;
+  --input-disabled-border-color: transparent;
+  --input-hover-border-color: black;
+
+  position: relative;
+  overflow: hidden;
+  background: white;
+}
+
+.libpdf-demo-viewer .textLayer {
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  color-scheme: only light;
+  line-height: 1;
+  opacity: 1;
+  text-align: initial;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  forced-color-adjust: none;
+  text-size-adjust: none;
+  z-index: 2;
+}
+
+.libpdf-demo-viewer .textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+}
+
+.libpdf-demo-viewer .textLayer > :not(.markedContent),
+.libpdf-demo-viewer .textLayer .markedContent span:not(.markedContent) {
+  --font-height: 0;
+  --scale-x: 1;
+  --rotate: 0deg;
+
+  z-index: 1;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  transform:
+    rotate(var(--rotate))
+    scaleX(var(--scale-x))
+    scale(calc(1 / var(--min-font-size)));
+}
+
+.libpdf-demo-viewer .textLayer .markedContent {
+  display: contents;
+}
+
+.libpdf-demo-viewer .textLayer span[role="img"] {
+  cursor: default;
+  user-select: none;
+}
+
+.libpdf-demo-viewer .textLayer ::selection {
+  background: color-mix(in srgb, AccentColor, transparent 75%);
+}
+
+.libpdf-demo-viewer .annotationLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color-scheme: only light;
+  pointer-events: none;
+  transform-origin: 0 0;
+  z-index: 3;
+}
+
+.libpdf-demo-viewer .annotationLayer[data-main-rotation="90"] .norotate {
+  transform: rotate(270deg) translateX(-100%);
+}
+
+.libpdf-demo-viewer .annotationLayer[data-main-rotation="180"] .norotate {
+  transform: rotate(180deg) translate(-100%, -100%);
+}
+
+.libpdf-demo-viewer .annotationLayer[data-main-rotation="270"] .norotate {
+  transform: rotate(90deg) translateY(-100%);
+}
+
+.libpdf-demo-viewer .annotationLayer .annotationContent {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.libpdf-demo-viewer .annotationLayer section {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: auto;
+  text-align: initial;
+  transform-origin: 0 0;
+  user-select: none;
+}
+
+.libpdf-demo-viewer .annotationLayer :is(.linkAnnotation, .buttonWidgetAnnotation.pushButton) > a {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  font-size: 1em;
+}
+
+.libpdf-demo-viewer
+  .annotationLayer
+  :is(.linkAnnotation, .buttonWidgetAnnotation.pushButton):not(.hasBorder)
+  > a:hover {
+  opacity: 0.2;
+  background-color: rgb(255 255 0);
+}
+
+.libpdf-demo-viewer .annotationLayer .linkAnnotation.hasBorder:hover {
+  background-color: rgb(255 255 0 / 0.2);
+}
+
+.libpdf-demo-viewer
+  .annotationLayer
+  .textWidgetAnnotation
+  :is(input, textarea),
+.libpdf-demo-viewer .annotationLayer .choiceWidgetAnnotation select,
+.libpdf-demo-viewer .annotationLayer .buttonWidgetAnnotation:is(.checkBox, .radioButton) input {
+  background-image: var(--annotation-unfocused-field-background);
+  border: 2px solid var(--input-unfocused-border-color);
+  box-sizing: border-box;
+  font: calc(9px * var(--total-scale-factor)) sans-serif;
+  height: 100%;
+  margin: 0;
+  width: 100%;
+}
+
+.libpdf-demo-viewer
+  .annotationLayer
+  .textWidgetAnnotation
+  :is(input, textarea):hover,
+.libpdf-demo-viewer .annotationLayer .choiceWidgetAnnotation select:hover,
+.libpdf-demo-viewer .annotationLayer .buttonWidgetAnnotation:is(.checkBox, .radioButton) input:hover {
+  border: 2px solid var(--input-hover-border-color);
+}
+
+.libpdf-demo-viewer
+  .annotationLayer
+  .textWidgetAnnotation
+  :is(input, textarea):focus,
+.libpdf-demo-viewer .annotationLayer .choiceWidgetAnnotation select:focus {
+  background: none;
+  border: 2px solid var(--input-focus-border-color);
+  border-radius: 2px;
+  outline: var(--input-focus-outline);
+}

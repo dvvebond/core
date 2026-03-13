@@ -1,0 +1,302 @@
+---
+title: Viewing PDFs
+description: A deep technical walkthrough of the pdf.js viewer architecture and the custom viewer implementation added to this repo.
+---
+
+# Viewing PDFs
+
+LibPDF has been a parsing and manipulation library. This guide adds the missing browser-side piece in
+this repo: a custom PDF viewer built on top of the same `pdf.js` runtime primitives that Mozilla's
+viewer uses.
+
+The important distinction is this:
+
+- **LibPDF** is still the document engine in this repo for parsing, editing, signing, filling, and saving.
+- **pdf.js** is the display engine for turning PDF operators into pixels, text overlays, and annotation layers in the browser.
+
+That split is the same split you should use if you want to build your own viewer from scratch.
+
+<Callout type="info" title="What Was Implemented Here">
+  The viewer added to this repo is a custom shell in
+  `apps/docs/components/pdf-viewer-demo.tsx`. It does not embed the stock Mozilla viewer chrome. It
+  directly wires together `getDocument`, `PDFPageProxy.render`, `TextLayerBuilder`,
+  `AnnotationLayerBuilder`, and `SimpleLinkService`.
+</Callout>
+
+<PDFViewerDemo />
+
+## The pdf.js Architecture, From Bottom to Top
+
+`pdf.js` is easier to understand if you think of it as three stacked systems rather than one file.
+
+### 1. Core parser and interpreter
+
+This is the low-level engine that understands PDF objects, streams, xref tables, fonts, images,
+operators, and document structure. The heavy parsing work is designed to run in a **worker** so the
+main thread stays responsive.
+
+What this layer does:
+
+- Parses the byte stream into PDF objects
+- Resolves page resources, fonts, images, and content streams
+- Interprets drawing operators into an internal operator list
+- Streams text content, annotations, structure, and optional-content data back to the main thread
+
+This is why the first step in a real viewer is not `canvas.drawImage()` or "show page 1". The first
+step is creating a worker-backed loading task.
+
+### 2. Display API
+
+The display layer is the public browser-facing API you actually code against.
+
+Its core objects are:
+
+- `getDocument(...)`
+- `PDFDocumentLoadingTask`
+- `PDFDocumentProxy`
+- `PDFPageProxy`
+- `RenderTask`
+- `PageViewport`
+
+This layer hides the worker protocol behind document and page proxies:
+
+1. `getDocument(...)` starts loading and parsing
+2. `loadingTask.promise` resolves to a `PDFDocumentProxy`
+3. `pdf.getPage(pageNumber)` resolves to a `PDFPageProxy`
+4. `page.getViewport({ scale, rotation })` maps PDF space to screen space
+5. `page.render(...)` rasterizes the page into a canvas
+
+This is the exact seam where a custom viewer should live.
+
+### 3. Web viewer layer
+
+Mozilla's full viewer is another layer on top of the display API. This is where viewer-specific UI
+and coordination live:
+
+- `PDFViewer`
+- `PDFPageView`
+- `PDFRenderingQueue`
+- `TextLayerBuilder`
+- `AnnotationLayerBuilder`
+- `PDFLinkService`
+- `PDFFindController`
+- thumbnails, history, sidebar, presentation mode, and scale management
+
+The key point is that the "viewer" is not the rendering engine. It is mostly coordination,
+virtualization, and UI.
+
+That is why building your own viewer is realistic: you do **not** need to rewrite the parser. You
+need to orchestrate the display API and the web-layer building blocks correctly.
+
+## How a Page Actually Gets On Screen
+
+For one page, the runtime pipeline looks like this:
+
+```ts
+const loadingTask = getDocument("/viewer/sample.pdf");
+const pdf = await loadingTask.promise;
+const page = await pdf.getPage(1);
+
+const viewport = page.getViewport({
+  scale: 1.25,
+  rotation: 0,
+});
+
+const renderTask = page.render({
+  canvasContext,
+  viewport,
+});
+
+await renderTask.promise;
+
+const textLayer = new TextLayerBuilder({
+  pdfPage: page,
+  onAppend: div => pageDiv.append(div),
+});
+await textLayer.render({ viewport });
+
+const annotationLayer = new AnnotationLayerBuilder({
+  pdfPage: page,
+  linkService,
+  renderForms: true,
+  onAppend: div => pageDiv.append(div),
+});
+await annotationLayer.render({ viewport, intent: "display" });
+```
+
+That is the minimum real viewer loop:
+
+- canvas for pixels
+- text layer for selection and copy
+- annotation layer for links, widgets, and interactive areas
+
+## Why `getViewport()` Matters So Much
+
+PDF coordinates are not CSS coordinates.
+
+PDF uses:
+
+- bottom-left origin
+- points, not CSS pixels
+- page-level rotation
+- optional user units
+
+The viewport is the transform object that converts PDF coordinates into browser coordinates. If your
+own viewer gets text layer alignment wrong, annotation boxes wrong, or zoom wrong, the first place
+to inspect is your viewport math.
+
+You should think of `viewport` as the contract between:
+
+- PDF-space geometry
+- canvas rendering
+- text overlay placement
+- annotation placement
+
+All page sublayers must be driven from the **same viewport** for the page to line up.
+
+## What Mozilla's Full Viewer Adds Beyond the Basics
+
+The stock pdf.js viewer does more than just call `render()`:
+
+- It renders only what is visible or about to become visible
+- It maintains a rendering queue and cancels obsolete render tasks
+- It tracks current scale, spread mode, scroll mode, and history
+- It coordinates text search highlights through the find controller
+- It supports forms, annotations, scripting hooks, and accessibility layers
+- It preserves page state and re-renders when rotation or zoom changes
+
+That extra layer is why the stock viewer feels like an application rather than a demo.
+
+If you want to grow the implementation in this repo into a production viewer, those are the next
+systems to add:
+
+1. Visible-page virtualization
+2. A rendering queue
+3. Search controller integration
+4. Thumbnails and outline navigation
+5. Incremental page shell creation instead of eager full-document rendering
+
+## How the Repo Implementation Works
+
+The implementation added here lives in `apps/docs/components/pdf-viewer-demo.tsx`.
+
+Its flow is:
+
+1. Load `pdf.js` on the client and point it at a local worker file in `apps/docs/public/pdf.worker.min.mjs`
+2. Start a `getDocument(...)` loading task for either the bundled sample PDF or an uploaded file
+3. Create a custom page shell for each `PDFPageProxy`
+4. Render the page into a high-DPI canvas
+5. Append a `TextLayerBuilder` so text can be selected and copied
+6. Append an `AnnotationLayerBuilder` so links and widgets behave like a viewer
+7. Re-run the whole document render when zoom, rotation, source, or reload changes
+8. Cancel stale render work when the component unmounts or settings change
+
+That is deliberately close to the official viewer architecture, but simpler.
+
+### Why this repo implementation is custom instead of embedding Mozilla's full viewer
+
+Because "build my own viewer" means owning the shell:
+
+- your own toolbar
+- your own layout
+- your own page framing
+- your own zoom/rotation controls
+- your own loading states
+
+Using the stock viewer iframe would hide the architecture. This custom implementation makes the
+plumbing explicit.
+
+## How To Build Your Own Viewer From Scratch
+
+If you want to reproduce this outside this repo, follow this order.
+
+### Step 1: Start with a worker-backed loader
+
+Set `GlobalWorkerOptions.workerSrc`, then call `getDocument(...)`.
+
+Do not start by designing the toolbar. Start with the worker, loading task, and one page render.
+
+### Step 2: Render one page correctly
+
+Get a single `PDFPageProxy`, create a viewport, size a canvas using device-pixel ratio, then await
+`page.render(...).promise`.
+
+If this step is wrong, everything built on top of it will be wrong.
+
+### Step 3: Add the text layer
+
+Text selection is not part of the canvas render. It is a separate HTML layer positioned over the
+page using the same viewport.
+
+This is why canvas-only viewers often feel broken even when the pixels look correct.
+
+### Step 4: Add the annotation layer
+
+Links, form widgets, and many interactive hotspots are not just painted pixels. They need a DOM
+overlay with event handling.
+
+That is what `AnnotationLayerBuilder` gives you.
+
+### Step 5: Handle cancellation
+
+A real viewer must cancel obsolete work:
+
+- zoom changed
+- rotation changed
+- document changed
+- component unmounted
+- a new render started before the old one finished
+
+The implementation in this repo cancels render tasks, text layers, annotation layers, and document
+loading when state changes.
+
+### Step 6: Add scheduling and virtualization
+
+The current repo implementation eagerly renders every page. That is good for a reference viewer and
+small files, but a production viewer should only render visible or nearly visible pages.
+
+That is the job of a render queue plus viewport visibility tracking.
+
+## Where LibPDF Fits In
+
+LibPDF is the part you use when the document must be **changed**:
+
+- fill forms
+- sign
+- flatten
+- extract text
+- merge or split
+- save incrementally
+
+`pdf.js` is the part you use when the document must be **displayed** in a browser.
+
+So the correct architecture for most serious PDF products is:
+
+- **LibPDF** for authoring, parsing, modification, and save flows
+- **pdf.js** for the display/runtime viewer surface
+
+That combination is exactly what this repo now demonstrates.
+
+## What To Build Next If You Want To Match The Stock Viewer
+
+To move from this custom viewer toward full pdf.js-viewer parity, add these in order:
+
+1. A visible-page render queue
+2. Search with `PDFFindController`
+3. Outline and named destination navigation
+4. Thumbnail generation
+5. Print support
+6. Keyboard navigation and accessibility tuning
+7. Optional-content-group controls for layer visibility
+8. Virtualized page mounting for very large documents
+
+## Files Added In This Repo
+
+- `apps/docs/components/pdf-viewer-demo.tsx`
+- `content/docs/guides/viewing.mdx`
+- `apps/docs/public/pdf.worker.min.mjs`
+- `apps/docs/public/pdfjs-images/*`
+- `apps/docs/public/viewer/sample.pdf`
+
+If you want the next step after this guide, the right move is to extract the viewer code into a
+dedicated `packages/viewer` package and keep `@libpdf/core` focused on document manipulation.
