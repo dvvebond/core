@@ -8,13 +8,10 @@
 
 import {
   createCanvasRenderer,
-  createCoordinateTransformer,
   createSearchEngine,
-  createTextLayerBuilder,
   createViewportManager,
   createVirtualScroller,
   PDF,
-  TextExtractor,
   type CanvasRenderer,
   type PageDimensions,
   type SearchEngine,
@@ -210,41 +207,51 @@ async function initializeViewer(): Promise<void> {
 
   // Set up viewport manager events
   state.viewportManager.addEventListener("pageRendered", async event => {
-    if (event.element && state.virtualScroller && state.pdf && state.renderer) {
+    if (event.element && state.virtualScroller && state.pdf) {
       const layout = state.virtualScroller.getPageLayout(event.pageIndex);
       if (!layout) {
         console.error(`No layout for page ${event.pageIndex}`);
         return;
       }
 
+      // Capture values we need before any async operations
+      const pageIndex = event.pageIndex;
+      const pdf = state.pdf;
+      const scale = state.scale;
+      const viewerRotation = state.rotation;
+
       // Get or create the page container
-      let container = state.pageElements.get(event.pageIndex);
+      let container = state.pageElements.get(pageIndex);
       const contentContainer = (state as any).contentContainer as HTMLElement;
       if (!container && contentContainer) {
         container = document.createElement("div");
         container.className = "page-container";
-        container.dataset.pageIndex = String(event.pageIndex);
-        state.pageElements.set(event.pageIndex, container);
+        container.dataset.pageIndex = String(pageIndex);
+        state.pageElements.set(pageIndex, container);
         contentContainer.appendChild(container);
       }
       if (!container) {
         return;
       }
 
-      // For high-DPI displays, re-render at higher resolution
-      const page = state.pdf.getPage(event.pageIndex);
+      // For high-DPI displays, re-render at higher resolution using a dedicated renderer
+      const page = pdf.getPage(pageIndex);
       const pageWidth = page.width;
       const pageHeight = page.height;
       const rotation = page.rotation;
 
+      // Create a NEW renderer for this page to avoid shared canvas issues
+      const pageRenderer = createCanvasRenderer();
+      await pageRenderer.initialize();
+
       // Create a high-DPI viewport (scale includes DPR)
-      const highDpiScale = state.scale * DPR;
-      const highDpiViewport = state.renderer.createViewport(
+      const highDpiScale = scale * DPR;
+      const highDpiViewport = pageRenderer.createViewport(
         pageWidth,
         pageHeight,
         rotation,
         highDpiScale,
-        state.rotation,
+        viewerRotation,
       );
 
       // Get content bytes and font resolver for high-quality render
@@ -252,8 +259,8 @@ async function initializeViewer(): Promise<void> {
       const fontResolver = page.createFontResolver();
 
       // Render at high DPI
-      const renderTask = state.renderer.render(
-        event.pageIndex,
+      const renderTask = pageRenderer.render(
+        pageIndex,
         highDpiViewport,
         contentBytes,
         fontResolver,
@@ -282,6 +289,9 @@ async function initializeViewer(): Promise<void> {
           dstCtx.drawImage(highDpiCanvas, 0, 0);
         }
 
+        // Clean up the page-specific renderer
+        pageRenderer.destroy();
+
         // Position and size the container based on layout
         container.style.position = "absolute";
         container.style.left = `${layout.left}px`;
@@ -297,12 +307,13 @@ async function initializeViewer(): Promise<void> {
         container.appendChild(displayCanvas);
 
         // Build text layer for text selection
-        buildTextLayer(event.pageIndex, container);
+        buildTextLayer(pageIndex, container);
 
         // Emit page rendered event
-        emitEvent("page:rendered", { pageIndex: event.pageIndex });
+        emitEvent("page:rendered", { pageIndex });
       } catch (err) {
-        console.error(`Failed to render high-DPI page ${event.pageIndex}:`, err);
+        console.error(`Failed to render high-DPI page ${pageIndex}:`, err);
+        pageRenderer.destroy();
       }
     }
   });
@@ -375,15 +386,12 @@ function createPageSource() {
 }
 
 async function buildTextLayer(pageIndex: number, container: HTMLElement): Promise<void> {
-  if (!state.pdf || !state.renderer) {
+  if (!state.pdf) {
     return;
   }
 
   try {
     const page = state.pdf.getPage(pageIndex);
-    const pageWidth = page.width;
-    const pageHeight = page.height;
-    const rotation = page.rotation;
 
     // Create text layer container
     const textLayerDiv = document.createElement("div");
@@ -397,84 +405,45 @@ async function buildTextLayer(pageIndex: number, container: HTMLElement): Promis
     textLayerDiv.style.lineHeight = "1";
     textLayerDiv.style.zIndex = "2"; // Above the canvas
 
-    // Create coordinate transformer for positioning text spans
-    const transformer = createCoordinateTransformer({
-      pageWidth,
-      pageHeight,
-      pageRotation: rotation as 0 | 90 | 180 | 270,
-      viewerRotation: state.rotation as 0 | 90 | 180 | 270,
-      scale: state.scale,
-    });
-
     // Extract text from page using TextExtractor
     const textSpans: TextSpanInfo[] = [];
     let currentOffset = 0;
 
-    // Build text layer with extracted text
-    const builder = createTextLayerBuilder({
-      container: textLayerDiv,
-      transformer,
-    });
+    // Use simple line-by-line text extraction for reliable text selection
+    // Character-level positioning requires precise alignment which is complex
+    const pageText = page.extractText();
+    const text = pageText.text;
+    if (text) {
+      const lines = text.split("\n");
+      // Scale the font size and positioning with the current scale
+      const baseFontSize = 12;
+      const scaledFontSize = baseFontSize * state.scale;
+      const lineHeight = scaledFontSize * 1.4;
+      const leftMargin = 10 * state.scale;
+      let y = 20 * state.scale;
 
-    // Extract characters for text layer
-    try {
-      const contentBytes = page.getContentBytes();
-      const fontResolver = page.createFontResolver();
-      const extractor = new TextExtractor({ resolveFont: fontResolver });
-      const chars = extractor.extract(contentBytes);
+      for (const line of lines) {
+        if (line.trim()) {
+          const span = document.createElement("span");
+          span.textContent = line;
+          span.style.position = "absolute";
+          span.style.left = `${leftMargin}px`;
+          span.style.top = `${y}px`;
+          span.style.fontSize = `${scaledFontSize}px`;
+          span.style.color = "transparent";
+          span.style.pointerEvents = "auto";
+          span.style.cursor = "text";
+          span.style.userSelect = "text";
+          textLayerDiv.appendChild(span);
 
-      if (chars.length > 0) {
-        builder.buildTextLayer(chars);
-
-        // Track text spans for search highlighting
-        const spans = textLayerDiv.querySelectorAll("span");
-        spans.forEach(span => {
-          const charText = span.textContent || "";
           textSpans.push({
-            element: span as HTMLElement,
-            text: charText,
+            element: span,
+            text: line,
             startOffset: currentOffset,
-            endOffset: currentOffset + charText.length,
+            endOffset: currentOffset + line.length,
           });
-          currentOffset += charText.length;
-        });
-      }
-    } catch {
-      // Fallback: create simple text spans from plain text
-      const pageText = page.extractText();
-      const text = pageText.text;
-      if (text) {
-        const lines = text.split("\n");
-        // Scale the font size and positioning with the current scale
-        const baseFontSize = 12;
-        const scaledFontSize = baseFontSize * state.scale;
-        const lineHeight = scaledFontSize * 1.4;
-        const leftMargin = 10 * state.scale;
-        let y = 20 * state.scale;
-
-        for (const line of lines) {
-          if (line.trim()) {
-            const span = document.createElement("span");
-            span.textContent = line;
-            span.style.position = "absolute";
-            span.style.left = `${leftMargin}px`;
-            span.style.top = `${y}px`;
-            span.style.fontSize = `${scaledFontSize}px`;
-            span.style.color = "transparent";
-            span.style.pointerEvents = "auto";
-            span.style.cursor = "text";
-            span.style.userSelect = "text";
-            textLayerDiv.appendChild(span);
-
-            textSpans.push({
-              element: span,
-              text: line,
-              startOffset: currentOffset,
-              endOffset: currentOffset + line.length,
-            });
-            currentOffset += line.length + 1; // +1 for newline
-            y += lineHeight;
-          }
+          currentOffset += line.length + 1; // +1 for newline
+          y += lineHeight;
         }
       }
     }
