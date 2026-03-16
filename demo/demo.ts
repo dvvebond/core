@@ -9,20 +9,21 @@
 import {
   buildPDFJSTextLayer,
   createBoundingBoxControls,
-  createBoundingBoxOverlay,
   createPDFJSRenderer,
   createPDFJSSearchEngine,
   createPDFResourceLoader,
+  createViewportAwareBoundingBoxOverlay,
   createVirtualScroller,
   createViewportManager,
   initializePDFJS,
   type BoundingBoxControls,
-  type BoundingBoxOverlay,
   type OverlayBoundingBox,
   type PageDimensions,
   type PDFDocumentProxy,
   type PDFJSSearchEngine,
   type PDFResourceLoader,
+  type ViewportAwareBoundingBoxOverlay,
+  type ViewportBounds,
   type ViewportManager,
   type VirtualScroller,
 } from "../src";
@@ -50,7 +51,7 @@ interface DemoState {
   resourceLoader: PDFResourceLoader | null;
   pageElements: Map<number, HTMLElement>;
   pageTextSpans: Map<number, TextSpanInfo[]>;
-  boundingBoxOverlay: BoundingBoxOverlay | null;
+  boundingBoxOverlay: ViewportAwareBoundingBoxOverlay | null;
   boundingBoxControls: BoundingBoxControls | null;
   pageDimensions: Map<number, { width: number; height: number }>;
   searchHighlightOverlays: Map<number, HTMLElement>;
@@ -400,6 +401,47 @@ async function initializeViewer(): Promise<void> {
     console.error(`Page ${event.pageIndex} error:`, event.error);
   });
 
+  // Connect bounding box overlay to viewport manager
+  if (state.boundingBoxOverlay && state.viewportManager) {
+    state.boundingBoxOverlay.connectToViewportManager(state.viewportManager);
+  }
+
+  // Listen for viewport changes to re-render bounding boxes with culling
+  state.viewportManager.addEventListener("viewportChange", event => {
+    if (state.boundingBoxOverlay && event.changeType) {
+      // Notify the overlay of viewport changes
+      const pageDims = state.pageDimensions.get(event.pageIndex) ?? { width: 612, height: 792 };
+      const currentScale = event.scale ?? state.scale;
+      state.boundingBoxOverlay.handleViewportChange(
+        {
+          width: pageDims.width * currentScale,
+          height: pageDims.height * currentScale,
+          scale: currentScale,
+          rotation: state.rotation,
+          offsetX: 0,
+          offsetY: 0,
+        },
+        pageDims.width,
+        pageDims.height,
+      );
+
+      // Re-render visible overlays with updated viewport bounds
+      const viewportBounds = getViewportBounds();
+      for (const [pageIndex, container] of state.pageElements) {
+        const dims = state.pageDimensions.get(pageIndex);
+        if (dims) {
+          state.boundingBoxOverlay.renderToPage(
+            pageIndex,
+            container,
+            event.scale ?? state.scale,
+            dims.height,
+            viewportBounds,
+          );
+        }
+      }
+    }
+  });
+
   // Initialize search engine
   initializeSearch();
 
@@ -453,6 +495,7 @@ function cleanupViewer(): void {
   }
   // Clean up bounding box overlay
   if (state.boundingBoxOverlay) {
+    state.boundingBoxOverlay.disconnectFromViewportManager();
     state.boundingBoxOverlay.removeAllOverlays();
     state.boundingBoxOverlay.clearAllBoundingBoxes();
   }
@@ -1572,11 +1615,28 @@ function generateMockBoundingBoxes(
 }
 
 /**
+ * Get current viewport bounds for culling optimization.
+ */
+function getViewportBounds(): ViewportBounds {
+  const viewer = elements.viewer;
+  return {
+    left: viewer.scrollLeft,
+    top: viewer.scrollTop,
+    right: viewer.scrollLeft + viewer.clientWidth,
+    bottom: viewer.scrollTop + viewer.clientHeight,
+  };
+}
+
+/**
  * Set up bounding box visualization components.
  */
 function setupBoundingBoxVisualization(): void {
-  // Create bounding box overlay
-  state.boundingBoxOverlay = createBoundingBoxOverlay();
+  // Create viewport-aware bounding box overlay with culling enabled
+  state.boundingBoxOverlay = createViewportAwareBoundingBoxOverlay({
+    enableViewportCulling: true,
+    cullingMargin: 100, // Render boxes 100px outside visible area
+    autoRenderOnViewportChange: true,
+  });
 
   // Create bounding box controls
   state.boundingBoxControls = createBoundingBoxControls({
@@ -1596,6 +1656,23 @@ function setupBoundingBoxVisualization(): void {
       state.boundingBoxOverlay?.setAllVisibility(event.visibility);
       logEvent("boundingBox:toggleAll", { visibility: event.visibility });
     }
+  });
+
+  // Listen for overlay events to log performance metrics
+  state.boundingBoxOverlay.addEventListener("render", event => {
+    if (event.culledBoxCount && event.culledBoxCount > 0) {
+      logEvent("boundingBox:rendered", {
+        pageIndex: event.pageIndex,
+        rendered: event.renderedBoxCount,
+        culled: event.culledBoxCount,
+      });
+    }
+  });
+
+  state.boundingBoxOverlay.addEventListener("viewportChange", event => {
+    logEvent("boundingBox:viewportChange", {
+      scale: event.scale,
+    });
   });
 
   // Add controls to the feature panel
@@ -1638,10 +1715,17 @@ function setupBoundingBoxVisualization(): void {
       const boxes = generateMockBoundingBoxes(pageIndex, textSpans, pageDims.height, state.scale);
       state.boundingBoxOverlay.setBoundingBoxes(pageIndex, boxes);
 
-      // Re-render the overlay for this page
+      // Re-render the overlay for this page with viewport culling
       const container = state.pageElements.get(pageIndex);
       if (container) {
-        state.boundingBoxOverlay.renderToPage(pageIndex, container, state.scale, pageDims.height);
+        const viewportBounds = getViewportBounds();
+        state.boundingBoxOverlay.renderToPage(
+          pageIndex,
+          container,
+          state.scale,
+          pageDims.height,
+          viewportBounds,
+        );
       }
     }
   });

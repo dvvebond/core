@@ -603,6 +603,71 @@ export class CanvasRenderer implements TypeAwareRenderer {
   }
 
   /**
+   * Render an overlay on top of the current canvas content.
+   *
+   * This method allows custom overlays (like bounding boxes, annotations, etc.)
+   * to be drawn on top of the rendered PDF content. The callback receives the
+   * canvas context and viewport information needed to properly position overlay elements.
+   *
+   * The context is saved before the callback and restored after, so overlay
+   * rendering won't affect subsequent PDF rendering operations.
+   *
+   * @param viewport - The viewport for the overlay rendering
+   * @param pageWidth - Width of the PDF page in points
+   * @param pageHeight - Height of the PDF page in points
+   * @param callback - Function that performs the overlay drawing
+   *
+   * @example
+   * ```ts
+   * renderer.renderOverlay(viewport, pageWidth, pageHeight, (ctx, info) => {
+   *   // Draw a bounding box in PDF coordinates
+   *   const screenRect = info.transformer.pdfRectToScreen({
+   *     x: 72, y: 700, width: 100, height: 20
+   *   });
+   *   ctx.strokeStyle = 'red';
+   *   ctx.strokeRect(screenRect.x, screenRect.y, screenRect.width, screenRect.height);
+   * });
+   * ```
+   */
+  renderOverlay(
+    viewport: Viewport,
+    pageWidth: number,
+    pageHeight: number,
+    callback: (
+      // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- DOM types may not be available
+      context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+      info: {
+        transformer: CoordinateTransformer;
+        viewport: Viewport;
+        canvasWidth: number;
+        canvasHeight: number;
+        scale: number;
+      },
+    ) => void,
+  ): void {
+    if (!this._context || !this._canvas) {
+      return;
+    }
+
+    const transformer = this.createCoordinateTransformer(viewport, pageWidth, pageHeight);
+
+    // Save context state before overlay rendering
+    this._context.save();
+
+    // Call the overlay callback with context and transformation info
+    callback(this._context, {
+      transformer,
+      viewport,
+      canvasWidth: this._canvas.width,
+      canvasHeight: this._canvas.height,
+      scale: viewport.scale,
+    });
+
+    // Restore context state after overlay rendering
+    this._context.restore();
+  }
+
+  /**
    * Whether the renderer is running in headless mode.
    */
   get isHeadless(): boolean {

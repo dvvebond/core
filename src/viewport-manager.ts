@@ -95,7 +95,8 @@ export type ViewportManagerEventType =
   | "pageStateChange"
   | "pageRendered"
   | "pageError"
-  | "pageCleanup";
+  | "pageCleanup"
+  | "viewportChange";
 
 /**
  * Event data for ViewportManager events.
@@ -125,6 +126,31 @@ export interface ViewportManagerEvent {
    * Error (for pageError events).
    */
   error?: Error;
+
+  /**
+   * Current scale (for viewportChange events).
+   */
+  scale?: number;
+
+  /**
+   * Previous scale (for viewportChange events).
+   */
+  previousScale?: number;
+
+  /**
+   * Current scroll position X (for viewportChange events).
+   */
+  scrollX?: number;
+
+  /**
+   * Current scroll position Y (for viewportChange events).
+   */
+  scrollY?: number;
+
+  /**
+   * Viewport change type (for viewportChange events).
+   */
+  changeType?: "scale" | "scroll" | "resize";
 }
 
 /**
@@ -563,7 +589,7 @@ export class ViewportManager {
   /**
    * Handle visible range changes from the scroller.
    */
-  private handleVisibleRangeChange = (_event: { visibleRange?: VisibleRange }): void => {
+  private handleVisibleRangeChange = (event: { visibleRange?: VisibleRange }): void => {
     // Skip if a scale change is pending - it will trigger its own update
     if (this._scaleChangePending) {
       return;
@@ -572,12 +598,24 @@ export class ViewportManager {
       this.updateVisiblePages();
     }
     this.cleanupOffscreenPages();
+
+    // Emit viewport change event for scroll
+    this.emitEvent({
+      type: "viewportChange",
+      pageIndex: event.visibleRange?.start ?? 0,
+      scale: this._scroller.scale,
+      scrollX: this._scroller.scrollLeft,
+      scrollY: this._scroller.scrollTop,
+      changeType: "scroll",
+    });
   };
 
   /**
    * Handle scale changes from the scroller.
    */
-  private handleScaleChange = async (_event: { scale?: number }): Promise<void> => {
+  private handleScaleChange = async (event: { scale?: number }): Promise<void> => {
+    const previousScale = this._scroller.scale;
+
     // Set flag to prevent redundant visible range updates
     this._scaleChangePending = true;
     try {
@@ -588,6 +626,17 @@ export class ViewportManager {
     }
     // Clean up pages that are no longer visible after scale change
     this.cleanupOffscreenPages();
+
+    // Emit viewport change event for scale
+    this.emitEvent({
+      type: "viewportChange",
+      pageIndex: this._scroller.getVisibleRange().start,
+      scale: event.scale ?? this._scroller.scale,
+      previousScale,
+      scrollX: this._scroller.scrollLeft,
+      scrollY: this._scroller.scrollTop,
+      changeType: "scale",
+    });
   };
 
   /**

@@ -775,6 +775,9 @@ export {
   BoundingBoxControls,
   createBoundingBoxControls,
   DEFAULT_TOGGLE_CONFIGS,
+  // Viewport-aware overlay
+  ViewportAwareBoundingBoxOverlay,
+  createViewportAwareBoundingBoxOverlay,
   // Types
   type OverlayBoundingBox,
   type BoundingBoxType,
@@ -789,6 +792,11 @@ export {
   type BoundingBoxControlsEventType,
   type BoundingBoxControlsEvent,
   type BoundingBoxControlsEventListener,
+  type ViewportAwareBoundingBoxOverlayOptions,
+  type ViewportBounds,
+  type ViewportOverlayEventType,
+  type ViewportOverlayEvent,
+  type ViewportOverlayEventListener,
 } from "./frontend";
 
 // ─────────────────────────────────────────────────────────────────────────────

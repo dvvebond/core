@@ -41,6 +41,20 @@ export {
 } from "./search";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Viewport-Aware Overlays
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  ViewportAwareBoundingBoxOverlay,
+  createViewportAwareBoundingBoxOverlay,
+  type ViewportAwareBoundingBoxOverlayOptions,
+  type ViewportBounds,
+  type ViewportOverlayEventType,
+  type ViewportOverlayEvent,
+  type ViewportOverlayEventListener,
+} from "./overlays";
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Bounding Box Visualization
 // ─────────────────────────────────────────────────────────────────────────────
 
