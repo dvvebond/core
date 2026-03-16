@@ -44,6 +44,9 @@
     },
     "./package.json": "./package.json"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "bench": "vitest bench",
     "bench:report": "bun run scripts/bench-report.ts",
