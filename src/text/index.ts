@@ -11,6 +11,52 @@ export { searchPage, searchPages } from "./text-search";
 export { TextState } from "./text-state";
 export * from "./types";
 
+// Hierarchical text extraction module
+export {
+  // Types
+  type Character,
+  type Word,
+  type Line,
+  type Paragraph,
+  type TextPage,
+  type ExtractionOptions,
+  type DocumentText,
+  mergeBoundingBoxes,
+  boxesOverlap,
+  horizontalGap,
+  verticalGap,
+  // Content stream parser
+  TextContentStreamParser,
+  type TextOperation,
+  type TextStateChange,
+  type TextMatrixSet,
+  type TextPositionChange,
+  type TextShow,
+  type TextShowItem,
+  type FontChange,
+  type GraphicsStateChange,
+  type TextObjectBoundary,
+  type TextParseResult,
+  type TextStateOperator,
+  type TextPositionOperator,
+  type TextShowOperator,
+  type GraphicsOperator,
+  // Text positioning
+  TextPositionCalculator,
+  createDefaultTextParams,
+  cloneTextParams,
+  type GraphicsState,
+  type TextParams,
+  type CharacterBBox,
+  // Text grouping
+  groupCharactersIntoPage,
+  // Main extractor
+  HierarchicalTextExtractor,
+  createHierarchicalTextExtractor,
+  type HierarchicalTextExtractorOptions,
+  type RawExtractionResult,
+} from "./extraction";
+
 // CMap (Character Map) support for international text
 export {
   // Core CMap types
