@@ -907,3 +907,39 @@ export {
   type UrlRefreshCallback,
   type ProgressCallback as PDFProgressCallback,
 } from "./viewer";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// React Components
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  // Main component
+  ReactPDFViewer,
+  PageNavigation,
+  ZoomControls,
+  SearchInput,
+  // Hooks
+  usePDFViewer,
+  usePDFSearch,
+  useBoundingBoxOverlay,
+  useViewport,
+  useScrollPosition,
+  // Types
+  type ReactPDFViewerProps,
+  type ReactPDFViewerRef,
+  type PageNavigationProps,
+  type ZoomControlsProps,
+  type SearchInputProps,
+  type PageRenderState,
+  type RenderedPage,
+  type PDFViewerState as ReactPDFViewerState,
+  type PDFViewerAction as ReactPDFViewerAction,
+  type SearchProps,
+  type SearchStateHook,
+  type SearchActions,
+  type BoundingBoxProps,
+  type BoundingBoxStateHook,
+  type BoundingBoxActions,
+  type ReactPDFViewerEvent,
+  type ReactPDFViewerEventType,
+} from "./react";
