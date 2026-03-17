@@ -11,11 +11,16 @@ import { MetricsPanel, usePerformanceMetrics } from "../utils/metrics";
 
 export function ReactPDFViewerExample() {
   const viewerRef = useRef<ReactPDFViewerRef>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageCount, setPageCount] = useState(0);
   const [scale, setScale] = useState(1);
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [pdfSource, setPdfSource] = useState<{ url?: string; data?: Uint8Array }>({
+    url: "/assets/sample.pdf",
+  });
+  const [urlInput, setUrlInput] = useState("");
   const { metrics, recordPageLoad, startRenderTimer, endRenderTimer } = usePerformanceMetrics();
 
   const handleDocumentLoad = useCallback(
@@ -41,6 +46,50 @@ export function ReactPDFViewerExample() {
 
   const handleScaleChange = useCallback((newScale: number) => {
     setScale(newScale);
+  }, []);
+
+  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.includes("pdf")) {
+      setLoadError("Please select a PDF file");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      const arrayBuffer = e.target?.result as ArrayBuffer;
+      if (arrayBuffer) {
+        const uint8Array = new Uint8Array(arrayBuffer);
+        setPdfSource({ data: uint8Array });
+        setIsLoaded(false);
+        setLoadError(null);
+      }
+    };
+    reader.onerror = () => {
+      setLoadError("Failed to read file");
+    };
+    reader.readAsArrayBuffer(file);
+  }, []);
+
+  const handleUrlLoad = useCallback(() => {
+    if (!urlInput.trim()) {
+      setLoadError("Please enter a URL");
+      return;
+    }
+    setPdfSource({ url: urlInput.trim() });
+    setIsLoaded(false);
+    setLoadError(null);
+  }, [urlInput]);
+
+  const handleLoadSample = useCallback(() => {
+    setPdfSource({ url: "/assets/sample.pdf" });
+    setUrlInput("");
+    setIsLoaded(false);
+    setLoadError(null);
   }, []);
 
   const metricsData = [
@@ -86,6 +135,47 @@ function MyViewer() {
       </div>
       <ReactPDFViewer ref={viewerRef} url="/document.pdf" />
     </>
+  );
+}`;
+
+  const fileUploadCode = `import { useRef, useState, useCallback } from "react";
+import { ReactPDFViewer } from "@dvvebond/core/react";
+
+function PDFUploader() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pdfData, setPdfData] = useState<Uint8Array | null>(null);
+
+  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const arrayBuffer = e.target?.result as ArrayBuffer;
+      if (arrayBuffer) {
+        setPdfData(new Uint8Array(arrayBuffer));
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }, []);
+
+  return (
+    <div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,application/pdf"
+        onChange={handleFileUpload}
+        style={{ display: "none" }}
+      />
+      <button onClick={() => fileInputRef.current?.click()}>
+        Choose PDF File
+      </button>
+
+      {pdfData && (
+        <ReactPDFViewer data={pdfData} initialScale={1} />
+      )}
+    </div>
   );
 }`;
 
@@ -138,6 +228,60 @@ function MyViewer() {
       </div>
 
       <div className="page-content">
+        {/* PDF Source Selection */}
+        <div className="card">
+          <div className="card-header">
+            <h3>Load PDF</h3>
+          </div>
+          <div className="card-body">
+            {/* File Upload */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", marginBottom: 8, fontWeight: 500 }}>
+                Upload PDF File
+              </label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  onChange={handleFileUpload}
+                  style={{ display: "none" }}
+                />
+                <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>
+                  Choose File
+                </button>
+                <button className="btn btn-secondary" onClick={handleLoadSample}>
+                  Load Sample PDF
+                </button>
+              </div>
+            </div>
+
+            {/* URL Input */}
+            <div>
+              <label style={{ display: "block", marginBottom: 8, fontWeight: 500 }}>
+                Or Load from URL
+              </label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  type="text"
+                  className="input"
+                  value={urlInput}
+                  onChange={e => setUrlInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleUrlLoad()}
+                  placeholder="https://example.com/document.pdf"
+                  style={{ flex: 1 }}
+                />
+                <button className="btn btn-primary" onClick={handleUrlLoad}>
+                  Load URL
+                </button>
+              </div>
+              <p style={{ marginTop: 8, fontSize: "0.875rem", color: "var(--text-secondary)" }}>
+                Try: https://pdfobject.com/pdf/sample.pdf
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Live Metrics */}
         <MetricsPanel metrics={metricsData} />
 
@@ -205,7 +349,7 @@ function MyViewer() {
             <div className="pdf-viewer-container large">
               <ReactPDFViewer
                 ref={viewerRef}
-                url="/assets/sample.pdf"
+                {...pdfSource}
                 initialScale={1}
                 onDocumentLoad={handleDocumentLoad}
                 onDocumentError={handleDocumentError}
@@ -235,6 +379,18 @@ function MyViewer() {
               Use a ref to access imperative methods for programmatic control of the viewer.
             </p>
             <CodeDisplay code={withRefCode} filename="ViewerWithRef.tsx" />
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <h3>File Upload</h3>
+          </div>
+          <div className="card-body">
+            <p style={{ marginBottom: 16, color: "var(--text-secondary)" }}>
+              Load PDFs from user-uploaded files using the FileReader API.
+            </p>
+            <CodeDisplay code={fileUploadCode} filename="PDFUploader.tsx" />
           </div>
         </div>
 
