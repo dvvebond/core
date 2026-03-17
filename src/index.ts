@@ -1,7 +1,8 @@
 /**
- * @libpdf/core
+ * @dvvebond/core
  *
- * A modern PDF library for TypeScript — parsing and generation.
+ * A fork of @libpdf/core with enhanced React components, Azure Document Intelligence
+ * integration, text extraction with bounding boxes, and enterprise PDF viewing features.
  */
 
 export { version } from "../package.json";

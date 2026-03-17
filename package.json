@@ -1,27 +1,35 @@
 {
   "name": "@dvvebond/core",
   "version": "0.2.12",
-  "description": "A modern PDF library for TypeScript - parsing and generation",
+  "description": "A fork of @libpdf/core with enhanced React components, Azure Document Intelligence integration, text extraction with bounding boxes, and enterprise PDF viewing features",
   "keywords": [
+    "azure-document-intelligence",
+    "bounding-box",
     "digital-signature",
     "document",
     "esign",
     "generator",
+    "ocr",
     "parser",
     "pdf",
+    "pdf-viewer",
     "pkcs7",
+    "react",
+    "react-pdf",
     "signing",
-    "typescript"
+    "text-extraction",
+    "typescript",
+    "viewport-management"
   ],
-  "homepage": "https://libpdf.dev",
+  "homepage": "https://github.com/dvvebond/core",
   "bugs": {
-    "url": "https://github.com/LibPDF-js/core/issues"
+    "url": "https://github.com/dvvebond/core/issues"
   },
   "license": "MIT",
-  "author": "Lucas Smith",
+  "author": "dvvebond",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/LibPDF-js/core.git"
+    "url": "git+https://github.com/dvvebond/core.git"
   },
   "files": [
     "dist",

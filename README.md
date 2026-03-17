@@ -1,31 +1,25 @@
-# LibPDF
+# @dvvebond/core
 
-[![npm](https://img.shields.io/npm/v/@libpdf/core)](https://www.npmjs.com/package/@libpdf/core)
-[![npm downloads](https://img.shields.io/npm/dm/@libpdf/core)](https://www.npmjs.com/package/@libpdf/core)
-[![CI](https://github.com/LibPDF-js/core/actions/workflows/ci.yml/badge.svg)](https://github.com/LibPDF-js/core/actions/workflows/ci.yml)
-[![GitHub stars](https://img.shields.io/github/stars/libpdf-js/core?style=flat)](https://github.com/LibPDF-js/core)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/@dvvebond/core)](https://www.npmjs.com/package/@dvvebond/core)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A modern PDF library for TypeScript. Parse, modify, and generate PDFs with a clean, intuitive API.
+A fork of [@libpdf/core](https://github.com/LibPDF-js/core) with enhanced React components, Azure Document Intelligence integration, text extraction with bounding boxes, and enterprise PDF viewing features.
 
-> **Beta Software**: LibPDF is under active development and APIs may change between minor versions, but we use it in production at [Documenso](https://documenso.com) and consider it ready for real-world use.
+## Fork Enhancements
 
-## Why LibPDF?
+This fork extends the original LibPDF library with:
 
-LibPDF was born from frustration. At [Documenso](https://documenso.com), we found ourselves wrestling with the JavaScript PDF ecosystem:
-
-- **PDF.js** is excellent for rendering and even has annotation editing — but it requires a browser
-- **pdf-lib** has a great API, but chokes on slightly malformed documents
-- **pdfkit** only generates, no parsing at all
-
-We kept adding workarounds. A patch here for a malformed xref table. A hack there for an encrypted document. Eventually, we decided to build what we actually needed:
-
-- **Lenient like PDFBox and PDF.js**: opens documents other libraries reject
-- **Intuitive like pdf-lib**: clean, TypeScript-first API
-- **Complete**: encryption, digital signatures, incremental saves, form filling
+- **React Integration Layer**: Production-ready React components and hooks for PDF viewing
+- **Text Extraction with Bounding Boxes**: Character, word, line, and paragraph-level extraction with precise coordinates
+- **Search Functionality**: Full-text search with highlighting and navigation
+- **Viewport Management**: Virtual scrolling for large documents with efficient memory usage
+- **Azure Document Intelligence Integration**: Process PDFs with Azure AI services
+- **Coordinate Transformation**: Convert between PDF and screen coordinates
 
 ## Features
+
+### Core PDF Operations (from LibPDF)
 
 | Feature            | Status | Notes                                      |
 | ------------------ | ------ | ------------------------------------------ |
@@ -42,170 +36,311 @@ We kept adding workarounds. A patch here for a malformed xref table. A hack ther
 | Images             | Yes    | JPEG, PNG (with alpha)                     |
 | Incremental Saves  | Yes    | Append changes, preserve signatures        |
 
+### Enhanced Features (this fork)
+
+| Feature                    | Description                                                    |
+| -------------------------- | -------------------------------------------------------------- |
+| React Components           | ReactPDFViewer, PageNavigation, ZoomControls, SearchInput      |
+| React Hooks                | usePDFViewer, usePDFSearch, useBoundingBoxOverlay, useViewport |
+| Text Extraction            | Hierarchical extraction (char/word/line/paragraph)             |
+| Bounding Box Visualization | Overlay system for highlighting text regions                   |
+| Virtual Scrolling          | Efficient rendering of large documents                         |
+| Search Engine              | Full-text search with match highlighting                       |
+| Coordinate Transformation  | PDF-to-screen and screen-to-PDF conversions                    |
+| PDF.js Integration         | Seamless integration with Mozilla's PDF.js                     |
+
 ## Installation
 
 ```bash
-npm install @libpdf/core
+npm install @dvvebond/core
 # or
-bun add @libpdf/core
+bun add @dvvebond/core
+# or
+pnpm add @dvvebond/core
+```
+
+For React components:
+
+```bash
+# React is a peer dependency
+npm install @dvvebond/core react react-dom
 ```
 
 ## Quick Start
 
-### Parse an existing PDF
+### Basic PDF Loading
 
 ```typescript
-import { PDF } from "@libpdf/core";
+import { PDF } from "@dvvebond/core";
 
 const pdf = await PDF.load(bytes);
 const pages = pdf.getPages();
-
 console.log(`${pages.length} pages`);
 ```
 
-### Open an encrypted PDF
+### React PDF Viewer
 
-```typescript
-const pdf = await PDF.load(bytes, { credentials: "password" });
+```tsx
+import { ReactPDFViewer, usePDFViewer, PageNavigation, ZoomControls } from "@dvvebond/core/react";
+import { useRef } from "react";
+
+function PDFViewerApp() {
+  const viewerRef = useRef<ReactPDFViewerRef>(null);
+
+  return (
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      <div className="toolbar">
+        <PageNavigation viewerRef={viewerRef} />
+        <ZoomControls viewerRef={viewerRef} />
+      </div>
+      <ReactPDFViewer
+        ref={viewerRef}
+        url="/document.pdf"
+        initialScale={1.0}
+        onPageChange={page => console.log("Current page:", page)}
+        onDocumentLoad={info => console.log("Loaded:", info.numPages, "pages")}
+      />
+    </div>
+  );
+}
 ```
 
-### Fill a form
+### Text Extraction with Bounding Boxes
 
 ```typescript
-const pdf = await PDF.load(bytes);
-const form = pdf.getForm();
+import {
+  HierarchicalTextExtractor,
+  createHierarchicalTextExtractor,
+  type TextPage,
+} from "@dvvebond/core";
 
-form.fill({
-  name: "Jane Doe",
-  email: "jane@example.com",
-  agreed: true,
+// Extract text with full hierarchy
+const extractor = createHierarchicalTextExtractor();
+const pageText: TextPage = await extractor.extractPage(pdfPage, {
+  includeCharacters: true,
+  includeWords: true,
+  includeLines: true,
+  includeParagraphs: true,
 });
 
-const filled = await pdf.save();
+// Access bounding boxes at any level
+for (const paragraph of pageText.paragraphs) {
+  console.log("Paragraph bbox:", paragraph.boundingBox);
+  for (const line of paragraph.lines) {
+    console.log("  Line:", line.text, "at", line.boundingBox);
+  }
+}
 ```
 
-### Sign a document
+### Search with Highlighting
+
+```tsx
+import { usePDFSearch, useBoundingBoxOverlay } from "@dvvebond/core/react";
+
+function SearchableViewer() {
+  const { searchState, search, nextMatch, prevMatch, clearSearch } = usePDFSearch();
+  const { boundingBoxes, setHighlights } = useBoundingBoxOverlay();
+
+  const handleSearch = async (query: string) => {
+    const results = await search(query);
+    // Results include bounding boxes for highlighting
+    setHighlights(results.map(r => r.boundingBox));
+  };
+
+  return (
+    <div>
+      <input type="text" onChange={e => handleSearch(e.target.value)} placeholder="Search..." />
+      <span>
+        {searchState.currentMatch} / {searchState.totalMatches}
+      </span>
+      <button onClick={prevMatch}>Previous</button>
+      <button onClick={nextMatch}>Next</button>
+    </div>
+  );
+}
+```
+
+### Bounding Box Visualization
 
 ```typescript
-import { PDF, P12Signer } from "@libpdf/core";
+import { createBoundingBoxOverlay, type OverlayBoundingBox } from "@dvvebond/core";
 
-const pdf = await PDF.load(bytes);
-const signer = await P12Signer.create(p12Bytes, "password");
+const overlay = createBoundingBoxOverlay(containerElement, {
+  pageWidth: 612,
+  pageHeight: 792,
+  scale: 1.5,
+});
 
-const signed = await pdf.sign({
-  signer,
-  reason: "I approve this document",
+// Add bounding boxes with different types
+overlay.setBoundingBoxes([
+  { x: 50, y: 100, width: 200, height: 20, type: "word", text: "Hello" },
+  { x: 50, y: 130, width: 300, height: 20, type: "line", text: "Hello World" },
+  { x: 50, y: 100, width: 300, height: 100, type: "paragraph" },
+]);
+
+// Control visibility by type
+overlay.setVisibility({
+  character: false,
+  word: true,
+  line: true,
+  paragraph: false,
 });
 ```
 
-### Merge PDFs
+### Virtual Scrolling for Large Documents
 
 ```typescript
-const merged = await PDF.merge([pdf1Bytes, pdf2Bytes, pdf3Bytes]);
+import { createViewportManager, createVirtualScroller, type PageSource } from "@dvvebond/core";
+
+const scroller = createVirtualScroller(containerElement, {
+  totalPages: 100,
+  pageHeight: 792,
+  pageGap: 10,
+  overscan: 2, // Render 2 extra pages above/below viewport
+});
+
+const viewportManager = createViewportManager({
+  pageSource: pdfDocument,
+  scroller,
+  renderer: createCanvasRenderer(),
+});
+
+// Pages are automatically loaded/unloaded as user scrolls
+scroller.on("visibleRangeChange", ({ startPage, endPage }) => {
+  console.log(`Visible pages: ${startPage} - ${endPage}`);
+});
 ```
 
-### Draw on a page
+### Coordinate Transformation
 
 ```typescript
-import { PDF, rgb } from "@libpdf/core";
+import {
+  createCoordinateTransformer,
+  getMousePdfCoordinates,
+  transformBoundingBoxes,
+} from "@dvvebond/core";
 
-const pdf = PDF.create();
-const page = pdf.addPage({ size: "letter" });
-
-page.drawText("Hello, World!", {
-  x: 50,
-  y: 700,
-  fontSize: 24,
-  color: rgb(0, 0, 0),
+const transformer = createCoordinateTransformer({
+  pageWidth: 612,
+  pageHeight: 792,
+  scale: 1.5,
+  rotation: 0,
 });
 
-page.drawRectangle({
-  x: 50,
-  y: 600,
-  width: 200,
-  height: 100,
-  color: rgb(0.9, 0.9, 0.9),
-  borderColor: rgb(0, 0, 0),
-  borderWidth: 1,
+// Handle click events on PDF
+containerElement.addEventListener("click", event => {
+  const pdfCoords = getMousePdfCoordinates(event, containerElement, transformer);
+  console.log(`Clicked at PDF coordinates: (${pdfCoords.x}, ${pdfCoords.y})`);
 });
 
-const output = await pdf.save();
+// Transform bounding boxes from PDF to screen coordinates
+const screenBoxes = transformBoundingBoxes(pdfBoundingBoxes, transformer);
+```
+
+### PDF.js Integration
+
+```typescript
+import {
+  initializePDFJS,
+  loadPDFJSDocument,
+  getPDFJSTextContent,
+  createPDFJSRenderer,
+} from "@dvvebond/core";
+
+// Initialize PDF.js (call once at app startup)
+await initializePDFJS();
+
+// Load document
+const doc = await loadPDFJSDocument(pdfBytes);
+const page = await doc.getPage(1);
+
+// Render to canvas
+const renderer = createPDFJSRenderer(canvas, {
+  scale: 1.5,
+  enableTextLayer: true,
+});
+await renderer.render(page);
+
+// Extract text content
+const textContent = await getPDFJSTextContent(page);
+```
+
+## React Hooks Reference
+
+### usePDFViewer
+
+Main hook for PDF viewer state management.
+
+```tsx
+const { currentPage, totalPages, scale, isLoading, error, goToPage, setScale, zoomIn, zoomOut } =
+  usePDFViewer(viewerRef);
+```
+
+### usePDFSearch
+
+Hook for search functionality.
+
+```tsx
+const {
+  searchState, // { query, matches, currentMatch, totalMatches, status }
+  search, // (query: string) => Promise<SearchResult[]>
+  nextMatch, // () => void
+  prevMatch, // () => void
+  clearSearch, // () => void
+} = usePDFSearch(viewerRef);
+```
+
+### useBoundingBoxOverlay
+
+Hook for bounding box visualization.
+
+```tsx
+const {
+  boundingBoxes,
+  visibility,
+  setVisibility,
+  addBoundingBoxes,
+  clearBoundingBoxes,
+  highlightBox,
+} = useBoundingBoxOverlay(viewerRef);
+```
+
+### useViewport
+
+Hook for viewport information.
+
+```tsx
+const { viewportWidth, viewportHeight, scrollTop, scrollLeft, visiblePages } =
+  useViewport(viewerRef);
+```
+
+### useScrollPosition
+
+Hook for scroll position tracking.
+
+```tsx
+const { scrollTop, scrollLeft, scrollTo, scrollToPage } = useScrollPosition(viewerRef);
 ```
 
 ## Runtime Support
 
-LibPDF runs everywhere:
+Works in all modern JavaScript environments:
 
 - **Node.js** 20+
 - **Bun**
 - **Browsers** (modern, with Web Crypto)
 
-## Known Limitations
+## Migration from react-pdf
 
-Some features are not yet implemented:
+See [MIGRATION.md](./MIGRATION.md) for a detailed migration guide from react-pdf to @dvvebond/core.
 
-| Feature                     | Status           | Notes                                  |
-| --------------------------- | ---------------- | -------------------------------------- |
-| Signature verification      | Not implemented  | Signing works; verification is planned |
-| TrueType Collections (.ttc) | Not supported    | Extract individual fonts first         |
-| JBIG2 image decoding        | Passthrough only | Images preserved but not decoded       |
-| JPEG2000 (JPX) decoding     | Passthrough only | Images preserved but not decoded       |
-| Certificate encryption      | Not supported    | Password encryption works              |
-| JavaScript actions          | Ignored          | Form calculations not executed         |
+## API Reference
 
-These limitations are documented to set expectations. Most don't affect typical use cases like form filling, signing, or document manipulation.
+See [API.md](./API.md) for complete API documentation.
 
-## Philosophy
+## Acknowledgments
 
-### Be lenient
-
-Real-world PDFs are messy. Export a document through three different tools and you'll get three slightly different interpretations of the spec. LibPDF prioritizes _opening your document_ over strict compliance. When standard parsing fails, we fall back to brute-force recovery, scanning the entire file to rebuild the structure.
-
-### Two API layers
-
-- **High-level**: `PDF`, `PDFPage`, `PDFForm` for common tasks
-- **Low-level**: `PdfDict`, `PdfArray`, `PdfStream` for full control
-
-## Demo
-
-Run the interactive PDF viewer demo to explore LibPDF's viewing capabilities:
-
-```bash
-bun run demo
-```
-
-See [demo/README.md](demo/README.md) for features and keyboard shortcuts.
-
-## Documentation
-
-Full documentation at [libpdf.dev](https://libpdf.dev)
-
-## Sponsors
-
-LibPDF is developed by [Documenso](https://documenso.com), the open-source DocuSign alternative.
-
-<a href="https://documenso.com">
-  <img src="apps/docs/public/sponsors/documenso.png" alt="Documenso" height="24">
-</a>
-
-## Contributing
-
-We welcome contributions! See our [contributing guide](CONTRIBUTING.md) for details.
-
-```bash
-# Clone the repo
-git clone https://github.com/libpdf/core.git
-cd libpdf
-
-# Install dependencies
-bun install
-
-# Run tests
-bun run test
-
-# Type check
-bun run typecheck
-```
+This project is a fork of [LibPDF](https://github.com/LibPDF-js/core) by [Documenso](https://documenso.com). The core PDF parsing and generation functionality is their excellent work.
 
 ## License
 

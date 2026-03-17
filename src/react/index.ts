@@ -13,7 +13,7 @@
  *   usePDFSearch,
  *   PageNavigation,
  *   ZoomControls,
- * } from "@libpdf/core/react";
+ * } from "@dvvebond/core/react";
  *
  * function App() {
  *   const viewerRef = useRef<ReactPDFViewerRef>(null);
