@@ -1,6 +1,6 @@
 {
   "name": "@dvvebond/core",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "description": "A fork of @libpdf/core with enhanced React components, Azure Document Intelligence integration, text extraction with bounding boxes, and enterprise PDF viewing features",
   "keywords": [
     "azure-document-intelligence",
