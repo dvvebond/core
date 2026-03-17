@@ -65,6 +65,7 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
     const viewportManagerRef = useRef<ViewportManager | null>(null);
     const pageElementsRef = useRef<Map<number, HTMLDivElement>>(new Map());
     const pageDimensionsRef = useRef<Map<number, PageDimensions>>(new Map());
+    const pdfBytesRef = useRef<Uint8Array | null>(null);
 
     // Initialize PDF.js and resource loader once
     useEffect(() => {
@@ -125,8 +126,10 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
           let result;
           if (data) {
             result = await loader.load({ type: "bytes", data });
+            pdfBytesRef.current = data;
           } else if (url) {
             result = await loader.load({ type: "url", url });
+            pdfBytesRef.current = result.bytes || null;
           } else {
             return;
           }
@@ -219,14 +222,11 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
           const renderer = createPDFJSRenderer();
           await renderer.initialize();
 
-          // Load document into renderer
-          if (data) {
-            await renderer.loadDocument(data);
-          } else if (url) {
-            // Fetch the PDF data for the renderer
-            const response = await fetch(url);
-            const arrayBuffer = await response.arrayBuffer();
-            await renderer.loadDocument(new Uint8Array(arrayBuffer));
+          // Load document into renderer using the stored bytes
+          if (pdfBytesRef.current) {
+            await renderer.loadDocument(pdfBytesRef.current);
+          } else {
+            throw new Error("PDF bytes not available for renderer");
           }
 
           if (!mounted) {
@@ -347,6 +347,9 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
             }
           });
 
+          // Initialize viewport manager to trigger initial render
+          await viewportManager.initialize();
+
           // Cleanup function
           return () => {
             container.removeEventListener("scroll", handleScroll);
@@ -382,7 +385,7 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
           rendererRef.current = null;
         }
       };
-    }, [pdfDocument, scale, currentPage, onPageChange, data, url]);
+    }, [pdfDocument]);
 
     // Update scale in virtual scroller
     useEffect(() => {
