@@ -1,3 +1,4 @@
+import type { PDFDocumentProxy } from "@dvvebond/core";
 import { useRef, useState, useCallback } from "react";
 
 import { PageNavigation } from "../components/PageNavigation";
@@ -21,10 +22,9 @@ export function ReactPDFViewerExample() {
   const { metrics, recordPageLoad, startRenderTimer, endRenderTimer } = usePerformanceMetrics();
 
   const handleDocumentLoad = useCallback(
-    (pdf: unknown) => {
+    (pdf: PDFDocumentProxy) => {
       const loadStart = performance.now();
-      const pdfDoc = pdf as { getPageCount: () => number };
-      setPageCount(pdfDoc.getPageCount());
+      setPageCount(pdf.numPages);
       setIsLoaded(true);
       setLoadError(null);
       recordPageLoad(performance.now() - loadStart);
