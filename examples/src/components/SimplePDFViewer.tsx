@@ -1,12 +1,24 @@
-import { PDF, createCanvasRenderer, type CanvasRenderer } from "@dvvebond/core";
-import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
+import {
+  initializePDFJS,
+  createPDFResourceLoader,
+  createPDFJSRenderer,
+  createVirtualScroller,
+  createViewportManager,
+  buildPDFJSTextLayer,
+  type PDFDocumentProxy,
+  type PDFResourceLoader,
+  type PDFJSRenderer,
+  type VirtualScroller,
+  type ViewportManager,
+  type PageDimensions,
+} from "@dvvebond/core";
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from "react";
 
 interface SimplePDFViewerProps {
   url?: string;
   data?: Uint8Array;
-  document?: PDF;
   initialScale?: number;
-  onDocumentLoad?: (pdf: PDF) => void;
+  onDocumentLoad?: (pdf: PDFDocumentProxy) => void;
   onDocumentError?: (error: Error) => void;
   onPageChange?: (page: number) => void;
   onScaleChange?: (scale: number) => void;
@@ -24,14 +36,13 @@ export interface SimplePDFViewerRef {
   refresh: () => void;
 }
 
-const DPR = window.devicePixelRatio || 1;
+const WORKER_SRC = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
 
 export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerProps>(
   function SimplePDFViewer(props, ref) {
     const {
       url,
       data,
-      document: providedDocument,
       initialScale = 1,
       onDocumentLoad,
       onDocumentError,
@@ -40,251 +51,438 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
     } = props;
 
     const containerRef = useRef<HTMLDivElement>(null);
-    const [pdf, setPdf] = useState<PDF | null>(providedDocument || null);
+    const contentContainerRef = useRef<HTMLDivElement | null>(null);
+    const [pdfDocument, setPdfDocument] = useState<PDFDocumentProxy | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [scale, setScaleState] = useState(initialScale);
-    const [rotation, setRotation] = useState(0);
     const [pageCount, setPageCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const renderersRef = useRef<Map<number, CanvasRenderer>>(new Map());
-    const canvasesRef = useRef<Map<number, HTMLCanvasElement>>(new Map());
 
-    // Load PDF from URL
+    const resourceLoaderRef = useRef<PDFResourceLoader | null>(null);
+    const rendererRef = useRef<PDFJSRenderer | null>(null);
+    const virtualScrollerRef = useRef<VirtualScroller | null>(null);
+    const viewportManagerRef = useRef<ViewportManager | null>(null);
+    const pageElementsRef = useRef<Map<number, HTMLDivElement>>(new Map());
+    const pageDimensionsRef = useRef<Map<number, PageDimensions>>(new Map());
+
+    // Initialize PDF.js and resource loader once
     useEffect(() => {
-      if (url && !data && !providedDocument) {
-        setLoading(true);
-        setError(null);
-        fetch(url)
-          .then(response => {
-            if (!response.ok) {
-              throw new Error(`Failed to fetch PDF: ${response.status}`);
-            }
-            return response.arrayBuffer();
-          })
-          .then(buffer => PDF.load(new Uint8Array(buffer)))
-          .then(loadedPdf => {
-            setPdf(loadedPdf);
-            setPageCount(loadedPdf.getPageCount());
-            setLoading(false);
-            onDocumentLoad?.(loadedPdf);
-          })
-          .catch(err => {
-            const errorMsg = err instanceof Error ? err.message : String(err);
-            setError(errorMsg);
-            setLoading(false);
-            onDocumentError?.(err instanceof Error ? err : new Error(errorMsg));
+      let mounted = true;
+
+      const init = async () => {
+        try {
+          // Initialize PDF.js
+          await initializePDFJS({
+            workerSrc: WORKER_SRC,
           });
-      }
-    }, [url, data, providedDocument, onDocumentLoad, onDocumentError]);
 
-    // Load PDF from data
-    useEffect(() => {
-      if (data && !providedDocument) {
-        setLoading(true);
-        setError(null);
-        PDF.load(data)
-          .then(loadedPdf => {
-            setPdf(loadedPdf);
-            setPageCount(loadedPdf.getPageCount());
-            setLoading(false);
-            onDocumentLoad?.(loadedPdf);
-          })
-          .catch(err => {
-            const errorMsg = err instanceof Error ? err.message : String(err);
-            setError(errorMsg);
-            setLoading(false);
-            onDocumentError?.(err instanceof Error ? err : new Error(errorMsg));
+          if (!mounted) {
+            return;
+          }
+
+          // Create resource loader
+          resourceLoaderRef.current = createPDFResourceLoader({
+            workerSrc: WORKER_SRC,
+            maxRetries: 3,
+            timeout: 30000,
           });
-      }
-    }, [data, providedDocument, onDocumentLoad, onDocumentError]);
+        } catch (err) {
+          console.error("Failed to initialize PDF.js:", err);
+          if (mounted) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            setError(`Initialization failed: ${errorMsg}`);
+            onDocumentError?.(err instanceof Error ? err : new Error(errorMsg));
+          }
+        }
+      };
 
-    // Use provided document
-    useEffect(() => {
-      if (providedDocument) {
-        setPdf(providedDocument);
-        setPageCount(providedDocument.getPageCount());
-        onDocumentLoad?.(providedDocument);
-      }
-    }, [providedDocument, onDocumentLoad]);
-
-    // Render pages
-    useEffect(() => {
-      if (!pdf || !containerRef.current) {
-        return;
-      }
-
-      const container = containerRef.current;
-      container.innerHTML = "";
-
-      const pagesContainer = document.createElement("div");
-      pagesContainer.style.cssText = `
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 20px;
-        padding: 20px;
-      `;
-      container.appendChild(pagesContainer);
-
-      // Render all pages
-      for (let pageIndex = 0; pageIndex < pageCount; pageIndex++) {
-        const pageWrapper = document.createElement("div");
-        pageWrapper.style.cssText = `
-          background: white;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-          position: relative;
-        `;
-        pageWrapper.dataset.pageIndex = String(pageIndex);
-
-        const canvas = document.createElement("canvas");
-        pageWrapper.appendChild(canvas);
-        pagesContainer.appendChild(pageWrapper);
-
-        canvasesRef.current.set(pageIndex, canvas);
-
-        // Render this page
-        renderPage(pdf, pageIndex, canvas, scale, rotation);
-      }
+      init();
 
       return () => {
-        // Cleanup renderers
-        renderersRef.current.forEach(renderer => {
-          // Renderer cleanup if needed
-        });
-        renderersRef.current.clear();
-        canvasesRef.current.clear();
+        mounted = false;
       };
-    }, [pdf, pageCount, scale, rotation]);
+    }, [onDocumentError]);
 
-    const renderPage = async (
-      pdfDoc: PDF,
-      pageIndex: number,
-      canvas: HTMLCanvasElement,
-      pageScale: number,
-      pageRotation: number,
-    ) => {
-      try {
-        const page = pdfDoc.getPage(pageIndex);
-        if (!page) {
-          return;
-        }
-
-        // Create renderer if needed
-        let renderer = renderersRef.current.get(pageIndex);
-        if (!renderer) {
-          renderer = createCanvasRenderer({ document: pdfDoc });
-          renderersRef.current.set(pageIndex, renderer);
-        }
-
-        // Calculate dimensions
-        let width = page.width * pageScale;
-        let height = page.height * pageScale;
-
-        // Swap dimensions for 90/270 degree rotation
-        if (pageRotation === 90 || pageRotation === 270) {
-          [width, height] = [height, width];
-        }
-
-        // Set canvas size
-        canvas.width = width * DPR;
-        canvas.height = height * DPR;
-        canvas.style.width = `${width}px`;
-        canvas.style.height = `${height}px`;
-
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          return;
-        }
-
-        ctx.scale(DPR, DPR);
-
-        // Apply rotation
-        if (pageRotation !== 0) {
-          ctx.save();
-          ctx.translate(width / 2, height / 2);
-          ctx.rotate((pageRotation * Math.PI) / 180);
-          ctx.translate((-page.width * pageScale) / 2, (-page.height * pageScale) / 2);
-        }
-
-        // Render the page
-        await renderer.renderPage(pageIndex, {
-          canvasContext: ctx,
-          viewport: {
-            width: page.width * pageScale,
-            height: page.height * pageScale,
-            rotation: pageRotation,
-            scale: pageScale,
-          },
-        });
-
-        if (pageRotation !== 0) {
-          ctx.restore();
-        }
-      } catch (err) {
-        console.error(`Failed to render page ${pageIndex}:`, err);
-      }
-    };
-
-    const goToPage = (page: number) => {
-      if (page < 1 || page > pageCount) {
+    // Load PDF when source changes
+    useEffect(() => {
+      if (!resourceLoaderRef.current) {
         return;
       }
-      setCurrentPage(page);
-      onPageChange?.(page);
-
-      // Scroll to page
-      const pageElement = containerRef.current?.querySelector(`[data-page-index="${page - 1}"]`);
-      if (pageElement) {
-        pageElement.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (!url && !data) {
+        return;
       }
-    };
 
-    const nextPage = () => {
+      let mounted = true;
+
+      const loadPDF = async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+          const loader = resourceLoaderRef.current!;
+
+          let result;
+          if (data) {
+            result = await loader.load({ type: "bytes", data });
+          } else if (url) {
+            result = await loader.load({ type: "url", url });
+          } else {
+            return;
+          }
+
+          if (!mounted) {
+            return;
+          }
+
+          const doc = result.document;
+          setPdfDocument(doc);
+          setPageCount(doc.numPages);
+          setLoading(false);
+          onDocumentLoad?.(doc);
+        } catch (err) {
+          console.error("Failed to load PDF:", err);
+          if (mounted) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            setError(errorMsg);
+            setLoading(false);
+            onDocumentError?.(err instanceof Error ? err : new Error(errorMsg));
+          }
+        }
+      };
+
+      loadPDF();
+
+      return () => {
+        mounted = false;
+      };
+    }, [url, data, onDocumentLoad, onDocumentError]);
+
+    // Initialize viewer when document loads
+    useEffect(() => {
+      if (!pdfDocument || !containerRef.current) {
+        return;
+      }
+
+      let mounted = true;
+      const container = containerRef.current;
+
+      const initViewer = async () => {
+        try {
+          // Clear previous viewer
+          container.innerHTML = "";
+          pageElementsRef.current.clear();
+          pageDimensionsRef.current.clear();
+
+          // Get page dimensions
+          const pageDimensions: PageDimensions[] = [];
+          for (let i = 0; i < pdfDocument.numPages; i++) {
+            const page = await pdfDocument.getPage(i + 1); // PDF.js uses 1-based indexing
+            const viewport = page.getViewport({ scale: 1 });
+            const dims = {
+              width: viewport.width,
+              height: viewport.height,
+            };
+            pageDimensions.push(dims);
+            pageDimensionsRef.current.set(i, dims);
+          }
+
+          if (!mounted) {
+            return;
+          }
+
+          // Create virtual scroller
+          const scroller = createVirtualScroller({
+            pageDimensions,
+            scale: scale,
+            pageGap: 20,
+            bufferSize: 1,
+            viewportWidth: container.clientWidth,
+            viewportHeight: container.clientHeight,
+          });
+          virtualScrollerRef.current = scroller;
+
+          // Set up container for scrolling
+          container.style.position = "relative";
+          container.style.overflow = "auto";
+
+          // Create content container
+          const contentContainer = document.createElement("div");
+          contentContainer.className = "viewer-content";
+          contentContainer.style.position = "relative";
+          contentContainer.style.width = `${Math.max(scroller.totalWidth, container.clientWidth)}px`;
+          contentContainer.style.height = `${scroller.totalHeight}px`;
+          container.appendChild(contentContainer);
+          contentContainerRef.current = contentContainer;
+
+          // Create renderer
+          const renderer = createPDFJSRenderer();
+          await renderer.initialize();
+
+          // Load document into renderer
+          if (data) {
+            await renderer.loadDocument(data);
+          } else if (url) {
+            // Fetch the PDF data for the renderer
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            await renderer.loadDocument(new Uint8Array(arrayBuffer));
+          }
+
+          if (!mounted) {
+            return;
+          }
+          rendererRef.current = renderer;
+
+          // Create page source for viewport manager
+          const pageSource = {
+            async getPage(pageIndex: number) {
+              return pdfDocument.getPage(pageIndex + 1);
+            },
+            getPageCount() {
+              return pdfDocument.numPages;
+            },
+            async getPageDimensions(pageIndex: number) {
+              return pageDimensionsRef.current.get(pageIndex) || { width: 0, height: 0 };
+            },
+            getPageRotation(_pageIndex: number) {
+              return 0; // Rotation not yet implemented
+            },
+          };
+
+          // Create viewport manager
+          const viewportManager = createViewportManager({
+            scroller: scroller,
+            renderer: renderer,
+            pageSource: pageSource,
+            maxConcurrentRenders: 3,
+          });
+          viewportManagerRef.current = viewportManager;
+
+          // Handle scroll events
+          const handleScroll = () => {
+            if (scroller) {
+              scroller.scrollTo(container.scrollLeft, container.scrollTop);
+            }
+          };
+          container.addEventListener("scroll", handleScroll);
+
+          // Handle visible range changes
+          scroller.addEventListener("visibleRangeChange", (event: any) => {
+            if (event.visibleRange) {
+              const newPage = event.visibleRange.startIndex + 1;
+              if (newPage !== currentPage) {
+                setCurrentPage(newPage);
+                onPageChange?.(newPage);
+              }
+            }
+          });
+
+          // Handle page renders
+          viewportManager.addEventListener("pageRendered", async (event: any) => {
+            if (!event.element || !scroller || !pdfDocument) {
+              return;
+            }
+
+            const pageIndex = event.pageIndex;
+            const layout = scroller.getPageLayout(pageIndex);
+            if (!layout) {
+              return;
+            }
+
+            // Get or create page container
+            let pageContainer = pageElementsRef.current.get(pageIndex);
+            if (!pageContainer && contentContainer) {
+              pageContainer = document.createElement("div");
+              pageContainer.className = "page-container";
+              pageContainer.dataset.pageIndex = String(pageIndex);
+              pageElementsRef.current.set(pageIndex, pageContainer);
+              contentContainer.appendChild(pageContainer);
+            }
+            if (!pageContainer) {
+              return;
+            }
+
+            // Position the container
+            pageContainer.style.position = "absolute";
+            pageContainer.style.left = `${layout.left}px`;
+            pageContainer.style.top = `${layout.top}px`;
+            pageContainer.style.width = `${layout.width}px`;
+            pageContainer.style.height = `${layout.height}px`;
+
+            // Clear and add canvas
+            pageContainer.innerHTML = "";
+            const canvas = event.element as HTMLCanvasElement;
+            canvas.style.width = "100%";
+            canvas.style.height = "100%";
+            canvas.style.position = "absolute";
+            canvas.style.left = "0";
+            canvas.style.top = "0";
+            pageContainer.appendChild(canvas);
+
+            // Add text layer
+            try {
+              const page = await pdfDocument.getPage(pageIndex + 1);
+              const viewport = page.getViewport({ scale });
+
+              const textLayerDiv = document.createElement("div");
+              textLayerDiv.className = "text-layer";
+              textLayerDiv.style.position = "absolute";
+              textLayerDiv.style.left = "0";
+              textLayerDiv.style.top = "0";
+              textLayerDiv.style.right = "0";
+              textLayerDiv.style.bottom = "0";
+              textLayerDiv.style.overflow = "hidden";
+              textLayerDiv.style.lineHeight = "1";
+              textLayerDiv.style.opacity = "0.2";
+
+              await buildPDFJSTextLayer(page, {
+                container: textLayerDiv,
+                viewport: viewport as any,
+              });
+
+              pageContainer.appendChild(textLayerDiv);
+            } catch (err) {
+              console.error(`Failed to build text layer for page ${pageIndex}:`, err);
+            }
+          });
+
+          // Cleanup function
+          return () => {
+            container.removeEventListener("scroll", handleScroll);
+          };
+        } catch (err) {
+          console.error("Failed to initialize viewer:", err);
+          if (mounted) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            setError(`Viewer initialization failed: ${errorMsg}`);
+          }
+        }
+      };
+
+      initViewer();
+
+      return () => {
+        mounted = false;
+
+        // Cleanup viewport manager
+        if (viewportManagerRef.current) {
+          // ViewportManager cleanup if needed
+          viewportManagerRef.current = null;
+        }
+
+        // Cleanup virtual scroller
+        if (virtualScrollerRef.current) {
+          virtualScrollerRef.current = null;
+        }
+
+        // Cleanup renderer
+        if (rendererRef.current) {
+          // Renderer cleanup if needed
+          rendererRef.current = null;
+        }
+      };
+    }, [pdfDocument, scale, currentPage, onPageChange, data, url]);
+
+    // Update scale in virtual scroller
+    useEffect(() => {
+      if (virtualScrollerRef.current) {
+        virtualScrollerRef.current.setScale(scale);
+      }
+    }, [scale]);
+
+    const goToPage = useCallback(
+      (page: number) => {
+        if (page < 1 || page > pageCount) {
+          return;
+        }
+
+        // Scroll to page using virtual scroller
+        if (virtualScrollerRef.current) {
+          const layout = virtualScrollerRef.current.getPageLayout(page - 1);
+          if (layout && containerRef.current) {
+            containerRef.current.scrollTo({
+              top: layout.top,
+              behavior: "smooth",
+            });
+          }
+        }
+
+        setCurrentPage(page);
+        onPageChange?.(page);
+      },
+      [pageCount, onPageChange],
+    );
+
+    const nextPage = useCallback(() => {
       if (currentPage < pageCount) {
         goToPage(currentPage + 1);
       }
-    };
+    }, [currentPage, pageCount, goToPage]);
 
-    const previousPage = () => {
+    const previousPage = useCallback(() => {
       if (currentPage > 1) {
         goToPage(currentPage - 1);
       }
-    };
+    }, [currentPage, goToPage]);
 
-    const setScale = (newScale: number) => {
-      const clampedScale = Math.max(0.25, Math.min(4, newScale));
-      setScaleState(clampedScale);
-      onScaleChange?.(clampedScale);
-    };
+    const setScale = useCallback(
+      (newScale: number) => {
+        const clampedScale = Math.max(0.25, Math.min(4, newScale));
+        setScaleState(clampedScale);
+        onScaleChange?.(clampedScale);
+      },
+      [onScaleChange],
+    );
 
-    const zoomIn = () => setScale(scale * 1.25);
-    const zoomOut = () => setScale(scale / 1.25);
+    const zoomIn = useCallback(() => {
+      setScale(scale * 1.25);
+    }, [scale, setScale]);
 
-    const rotateClockwise = () => {
-      setRotation((rotation + 90) % 360);
-    };
+    const zoomOut = useCallback(() => {
+      setScale(scale / 1.25);
+    }, [scale, setScale]);
 
-    const rotateCounterClockwise = () => {
-      setRotation((rotation - 90 + 360) % 360);
-    };
+    const rotateClockwise = useCallback(() => {
+      // Rotation not implemented yet
+      console.warn("Rotation not yet implemented");
+    }, []);
 
-    const refresh = () => {
-      // Force re-render
+    const rotateCounterClockwise = useCallback(() => {
+      // Rotation not implemented yet
+      console.warn("Rotation not yet implemented");
+    }, []);
+
+    const refresh = useCallback(() => {
+      // Force re-render by updating scale
       setScaleState(s => s);
-    };
+    }, []);
 
-    useImperativeHandle(ref, () => ({
-      goToPage,
-      nextPage,
-      previousPage,
-      setScale,
-      zoomIn,
-      zoomOut,
-      rotateClockwise,
-      rotateCounterClockwise,
-      refresh,
-    }));
+    useImperativeHandle(
+      ref,
+      () => ({
+        goToPage,
+        nextPage,
+        previousPage,
+        setScale,
+        zoomIn,
+        zoomOut,
+        rotateClockwise,
+        rotateCounterClockwise,
+        refresh,
+      }),
+      [
+        goToPage,
+        nextPage,
+        previousPage,
+        setScale,
+        zoomIn,
+        zoomOut,
+        rotateClockwise,
+        rotateCounterClockwise,
+        refresh,
+      ],
+    );
 
     if (loading) {
       return (
@@ -329,7 +527,7 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
       );
     }
 
-    if (!pdf) {
+    if (!pdfDocument) {
       return (
         <div
           ref={containerRef}

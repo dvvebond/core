@@ -121,3 +121,41 @@ examples/
 ### Development
 
 The interactive examples app uses Vite for fast development with HMR. The `@dvvebond/core` library is linked directly from the parent directory for real-time updates during development.
+
+### Important: SimplePDFViewer Implementation
+
+The `SimplePDFViewer` component (`src/components/SimplePDFViewer.tsx`) uses the **correct PDF.js integration pattern** from `demo/demo.ts`:
+
+```typescript
+// Initialize PDF.js with worker
+await initializePDFJS({ workerSrc });
+
+// Load PDF with retry/timeout support
+const loader = createPDFResourceLoader({ workerSrc, maxRetries: 3, timeout: 30000 });
+const { document } = await loader.load({ type: "url", url });
+
+// Create PDF.js renderer
+const renderer = createPDFJSRenderer();
+await renderer.initialize();
+await renderer.loadDocument(pdfBytes);
+
+// Virtual scrolling for efficiency
+const scroller = createVirtualScroller({ pageDimensions, scale, pageGap: 20 });
+
+// Viewport manager for lazy rendering
+const viewportManager = createViewportManager({
+  scroller,
+  renderer,
+  pageSource,
+  maxConcurrentRenders: 3,
+});
+
+// Text layer for selection
+await buildPDFJSTextLayer(page, { container, viewport });
+```
+
+**Why not use ReactPDFViewer from @dvvebond/core/react?**
+
+The library's `ReactPDFViewer` component doesn't work - it doesn't use the PDF.js integration APIs correctly. Our `SimplePDFViewer` follows the same proven pattern as the working demo.
+
+See [IMPLEMENTATION_NOTES.md](./IMPLEMENTATION_NOTES.md) for detailed technical explanation.
