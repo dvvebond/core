@@ -38,7 +38,6 @@ export {
   PageNavigation,
   ZoomControls,
   SearchInput,
-  default,
   type PageNavigationProps,
   type ZoomControlsProps,
   type SearchInputProps,

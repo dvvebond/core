@@ -30,7 +30,7 @@
   ],
   "type": "module",
   "sideEffects": false,
-  "main": "./dist/index.mjs",
+  "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "imports": {
@@ -40,7 +40,14 @@
     ".": {
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
       "default": "./dist/index.mjs"
+    },
+    "./react": {
+      "types": "./dist/react.d.mts",
+      "import": "./dist/react.mjs",
+      "require": "./dist/react.cjs",
+      "default": "./dist/react.mjs"
     },
     "./package.json": "./package.json"
   },

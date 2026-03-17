@@ -909,37 +909,11 @@ export {
 } from "./viewer";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// React Components
+// React Components (available via @dvvebond/core/react)
 // ─────────────────────────────────────────────────────────────────────────────
-
-export {
-  // Main component
-  ReactPDFViewer,
-  PageNavigation,
-  ZoomControls,
-  SearchInput,
-  // Hooks
-  usePDFViewer,
-  usePDFSearch,
-  useBoundingBoxOverlay,
-  useViewport,
-  useScrollPosition,
-  // Types
-  type ReactPDFViewerProps,
-  type ReactPDFViewerRef,
-  type PageNavigationProps,
-  type ZoomControlsProps,
-  type SearchInputProps,
-  type PageRenderState,
-  type RenderedPage,
-  type PDFViewerState as ReactPDFViewerState,
-  type PDFViewerAction as ReactPDFViewerAction,
-  type SearchProps,
-  type SearchStateHook,
-  type SearchActions,
-  type BoundingBoxProps,
-  type BoundingBoxStateHook,
-  type BoundingBoxActions,
-  type ReactPDFViewerEvent,
-  type ReactPDFViewerEventType,
-} from "./react";
+// React components, hooks, and types are exported from the separate /react
+// entry point to allow tree-shaking for non-React consumers.
+// Import from "@dvvebond/core/react" for:
+//   - ReactPDFViewer, PageNavigation, ZoomControls, SearchInput
+//   - usePDFViewer, usePDFSearch, useBoundingBoxOverlay, useViewport, useScrollPosition
+//   - All React-specific types
