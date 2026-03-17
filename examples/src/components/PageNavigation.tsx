@@ -25,7 +25,7 @@ export function PageNavigation({ currentPage, pageCount, onPageChange }: PageNav
         <input
           type="number"
           className="input"
-          value={currentPage}
+          value={isNaN(currentPage) || currentPage < 1 ? 1 : currentPage}
           onChange={handleInputChange}
           min={1}
           max={pageCount}

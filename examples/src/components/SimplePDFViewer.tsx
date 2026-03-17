@@ -269,12 +269,10 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
 
           // Handle visible range changes
           scroller.addEventListener("visibleRangeChange", (event: any) => {
-            if (event.visibleRange) {
+            if (event.visibleRange && event.visibleRange.startIndex !== undefined) {
               const newPage = event.visibleRange.startIndex + 1;
-              if (newPage !== currentPage) {
-                setCurrentPage(newPage);
-                onPageChange?.(newPage);
-              }
+              setCurrentPage(newPage);
+              onPageChange?.(newPage);
             }
           });
 
@@ -396,37 +394,41 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
 
     const goToPage = useCallback(
       (page: number) => {
-        if (page < 1 || page > pageCount) {
+        if (!virtualScrollerRef.current || !containerRef.current) {
+          console.warn("Cannot navigate: viewer not initialized");
           return;
         }
 
-        // Scroll to page using virtual scroller
-        if (virtualScrollerRef.current) {
-          const layout = virtualScrollerRef.current.getPageLayout(page - 1);
-          if (layout && containerRef.current) {
-            containerRef.current.scrollTo({
-              top: layout.top,
-              behavior: "smooth",
-            });
-          }
+        if (page < 1) {
+          console.warn(`Invalid page: ${page} (minimum is 1)`);
+          return;
         }
+
+        // Get page layout from virtual scroller
+        const layout = virtualScrollerRef.current.getPageLayout(page - 1);
+        if (!layout) {
+          console.warn(`No layout found for page ${page}`);
+          return;
+        }
+
+        // Scroll to page
+        containerRef.current.scrollTo({
+          top: layout.top,
+          behavior: "smooth",
+        });
 
         setCurrentPage(page);
         onPageChange?.(page);
       },
-      [pageCount, onPageChange],
+      [onPageChange],
     );
 
     const nextPage = useCallback(() => {
-      if (currentPage < pageCount) {
-        goToPage(currentPage + 1);
-      }
-    }, [currentPage, pageCount, goToPage]);
+      goToPage(currentPage + 1);
+    }, [currentPage, goToPage]);
 
     const previousPage = useCallback(() => {
-      if (currentPage > 1) {
-        goToPage(currentPage - 1);
-      }
+      goToPage(currentPage - 1);
     }, [currentPage, goToPage]);
 
     const setScale = useCallback(
