@@ -1,16 +1,13 @@
-import {
-  ReactPDFViewer,
-  PageNavigation,
-  ZoomControls,
-  type ReactPDFViewerRef,
-} from "@dvvebond/core/react";
 import { useRef, useState, useCallback } from "react";
 
+import { PageNavigation } from "../components/PageNavigation";
+import { SimplePDFViewer, type SimplePDFViewerRef } from "../components/SimplePDFViewer";
+import { ZoomControls } from "../components/ZoomControls";
 import { CodeDisplay } from "../utils/code-display";
 import { MetricsPanel, usePerformanceMetrics } from "../utils/metrics";
 
 export function ReactPDFViewerExample() {
-  const viewerRef = useRef<ReactPDFViewerRef>(null);
+  const viewerRef = useRef<SimplePDFViewerRef>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageCount, setPageCount] = useState(0);
@@ -100,11 +97,12 @@ export function ReactPDFViewerExample() {
     ...(metrics.memoryUsage ? [{ label: "Memory", value: metrics.memoryUsage, unit: "MB" }] : []),
   ];
 
-  const basicUsageCode = `import { ReactPDFViewer } from "@dvvebond/core/react";
+  const basicUsageCode = `import { PDF } from "@dvvebond/core";
+import { SimplePDFViewer } from "./components/SimplePDFViewer";
 
 function MyViewer() {
   return (
-    <ReactPDFViewer
+    <SimplePDFViewer
       url="/path/to/document.pdf"
       initialScale={1}
       onDocumentLoad={(pdf) => console.log("Loaded!")}
@@ -114,10 +112,10 @@ function MyViewer() {
 }`;
 
   const withRefCode = `import { useRef } from "react";
-import { ReactPDFViewer, type ReactPDFViewerRef } from "@dvvebond/core/react";
+import { SimplePDFViewer, type SimplePDFViewerRef } from "./components/SimplePDFViewer";
 
 function MyViewer() {
-  const viewerRef = useRef<ReactPDFViewerRef>(null);
+  const viewerRef = useRef<SimplePDFViewerRef>(null);
 
   const handleZoomIn = () => viewerRef.current?.zoomIn();
   const handleZoomOut = () => viewerRef.current?.zoomOut();
@@ -133,13 +131,13 @@ function MyViewer() {
         <button onClick={handleZoomOut}>Zoom Out</button>
         <button onClick={handleZoomIn}>Zoom In</button>
       </div>
-      <ReactPDFViewer ref={viewerRef} url="/document.pdf" />
+      <SimplePDFViewer ref={viewerRef} url="/document.pdf" />
     </>
   );
 }`;
 
   const fileUploadCode = `import { useRef, useState, useCallback } from "react";
-import { ReactPDFViewer } from "@dvvebond/core/react";
+import { SimplePDFViewer } from "./components/SimplePDFViewer";
 
 function PDFUploader() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -173,13 +171,13 @@ function PDFUploader() {
       </button>
 
       {pdfData && (
-        <ReactPDFViewer data={pdfData} initialScale={1} />
+        <SimplePDFViewer data={pdfData} initialScale={1} />
       )}
     </div>
   );
 }`;
 
-  const propsCode = `interface ReactPDFViewerProps {
+  const propsCode = `interface SimplePDFViewerProps {
   // Document source (one required)
   document?: PDF;           // Pre-loaded PDF instance
   data?: Uint8Array;        // Raw PDF bytes
@@ -347,7 +345,7 @@ function PDFUploader() {
               </div>
             )}
             <div className="pdf-viewer-container large">
-              <ReactPDFViewer
+              <SimplePDFViewer
                 ref={viewerRef}
                 {...pdfSource}
                 initialScale={1}
