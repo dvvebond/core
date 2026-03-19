@@ -621,42 +621,42 @@ function extractMetadata(parsed: ParsedDocument, catalog: PdfDict | null): Docum
     if (info instanceof PdfDict) {
       const title = info.getString("Title");
       if (title) {
-        result.title = title.toString();
+        result.title = title.asString();
       }
 
       const author = info.getString("Author");
       if (author) {
-        result.author = author.toString();
+        result.author = author.asString();
       }
 
       const subject = info.getString("Subject");
       if (subject) {
-        result.subject = subject.toString();
+        result.subject = subject.asString();
       }
 
       const keywords = info.getString("Keywords");
       if (keywords) {
-        result.keywords = keywords.toString();
+        result.keywords = keywords.asString();
       }
 
       const creator = info.getString("Creator");
       if (creator) {
-        result.creator = creator.toString();
+        result.creator = creator.asString();
       }
 
       const producer = info.getString("Producer");
       if (producer) {
-        result.producer = producer.toString();
+        result.producer = producer.asString();
       }
 
       const creationDate = info.getString("CreationDate");
       if (creationDate) {
-        result.creationDate = creationDate.toString();
+        result.creationDate = creationDate.asString();
       }
 
       const modDate = info.getString("ModDate");
       if (modDate) {
-        result.modificationDate = modDate.toString();
+        result.modificationDate = modDate.asString();
       }
     }
   }

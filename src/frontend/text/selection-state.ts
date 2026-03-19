@@ -328,9 +328,16 @@ export function createSelectionAnchor(point: SelectionPoint, locked = false): Se
 /**
  * Check if two text positions are equal.
  */
-export function textPositionsEqual(a: TextPosition | undefined, b: TextPosition | undefined): boolean {
-  if (!a && !b) {return true;}
-  if (!a || !b) {return false;}
+export function textPositionsEqual(
+  a: TextPosition | undefined,
+  b: TextPosition | undefined,
+): boolean {
+  if (!a && !b) {
+    return true;
+  }
+  if (!a || !b) {
+    return false;
+  }
   return a.pageIndex === b.pageIndex && a.charOffset === b.charOffset;
 }
 

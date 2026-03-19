@@ -3,10 +3,12 @@
 # PDF Viewer Implementation: Build Phases
 
 ## Phase 1: Core Rendering Pipeline
+
 **Duration**: 3-4 weeks  
 **Goal**: Establish basic PDF page rendering to HTML5 Canvas with coordinate transformation
 
 ### Deliverables
+
 - **Canvas Renderer**: Convert LibPDF drawing commands to Canvas API calls
 - **SVG Renderer**: Alternative SVG-based rendering for scalability
 - **Coordinate Transformer**: Map PDF coordinates to screen pixels with zoom/pan support
@@ -14,6 +16,7 @@
 - **Drawing Command Interpreter**: Parse and execute PDF content stream operations
 
 ### Acceptance Criteria
+
 - ✅ Render simple PDF pages (text, shapes, basic graphics) to canvas
 - ✅ Support zoom levels from 25% to 500% without quality degradation
 - ✅ Handle coordinate transformations accurately (PDF bottom-left origin to screen top-left)
@@ -23,10 +26,12 @@
 - ✅ Handle edge cases: empty pages, malformed graphics state
 
 ## Phase 2: Text Layer & Selection
+
 **Duration**: 2-3 weeks  
 **Goal**: Implement transparent DOM text overlay for native selection and copying
 
 ### Deliverables
+
 - **Text Layer Builder**: Generate positioned DOM elements from LibPDF's ExtractedChar data
 - **Text Span Generator**: Create transparent `<span>` elements overlaying canvas
 - **Selection Handler**: Enable native browser text selection
@@ -34,6 +39,7 @@
 - **Copy/Paste Integration**: Support browser clipboard operations
 
 ### Acceptance Criteria
+
 - ✅ Text selection works identically to native browser behavior
 - ✅ Copy/paste preserves original text content and formatting
 - ✅ Text spans positioned with sub-pixel accuracy over canvas
@@ -43,10 +49,12 @@
 - ✅ Maintain text layer synchronization during zoom/pan operations
 
 ## Phase 3: Search & Highlighting System
+
 **Duration**: 2 weeks  
 **Goal**: Full-document search with visual highlighting and navigation
 
 ### Deliverables
+
 - **Search Engine**: Extend LibPDF's existing `findText()` functionality
 - **Search State Manager**: Handle search queries, results, and current match
 - **Highlight Renderer**: Draw search result overlays with zoom awareness
@@ -54,6 +62,7 @@
 - **Visual Highlighting**: Support user-created highlights and annotations
 
 ### Acceptance Criteria
+
 - ✅ Search across entire document with regex support
 - ✅ Highlight all matches with distinct visual styling
 - ✅ Navigate between matches with keyboard shortcuts (F3, Shift+F3)
@@ -64,10 +73,12 @@
 - ✅ Clear search highlights when new search initiated
 
 ## Phase 4: DOM Virtualization
+
 **Duration**: 2-3 weeks  
 **Goal**: Optimize performance for large documents through viewport-based rendering
 
 ### Deliverables
+
 - **Virtual Scroller**: Render only pages in current viewport
 - **Page Estimator**: Calculate heights of non-rendered pages
 - **Viewport Manager**: Track visible area and trigger page rendering
@@ -75,6 +86,7 @@
 - **Memory Manager**: Cleanup off-screen resources
 
 ### Acceptance Criteria
+
 - ✅ Smooth scrolling through 1000+ page documents
 - ✅ Memory usage remains constant regardless of document size
 - ✅ Render new pages within viewport in <100ms
@@ -85,10 +97,12 @@
 - ✅ Cleanup resources for pages scrolled out of view
 
 ## Phase 5: Web Worker Architecture
+
 **Duration**: 3 weeks  
 **Goal**: Move PDF parsing and heavy processing to Web Workers to prevent UI blocking
 
 ### Deliverables
+
 - **PDF Worker**: Web Worker wrapper for LibPDF core functionality
 - **Worker Proxy**: Main thread interface for worker communication
 - **Parsing Worker**: Handle document parsing and text extraction in background
@@ -96,6 +110,7 @@
 - **Progress Reporting**: Real-time parsing progress for large documents
 
 ### Acceptance Criteria
+
 - ✅ UI remains responsive during document parsing
 - ✅ Parse 100MB+ PDF files without blocking main thread
 - ✅ Progress updates at least every 500ms during parsing
@@ -106,10 +121,12 @@
 - ✅ Performance target: 50% faster parsing for large documents
 
 ## Phase 6: Enhanced CMap & Global Document Support
+
 **Duration**: 2 weeks  
 **Goal**: Support CJK and legacy character mappings for international documents
 
 ### Deliverables
+
 - **CJK CMap Loader**: Load and parse Chinese, Japanese, Korean character maps
 - **Legacy CMap Support**: Support pre-Unicode character encodings
 - **CMap Registry**: Manage and cache character mapping tables
@@ -117,6 +134,7 @@
 - **Unicode Normalization**: Ensure consistent text representation
 
 ### Acceptance Criteria
+
 - ✅ Support Adobe CJK CMap files (Adobe-GB1, Adobe-CNS1, Adobe-Japan1, Adobe-Korea1)
 - ✅ Handle legacy encodings (MacRoman, WinAnsi, Symbol, ZapfDingbats)
 - ✅ Render CJK documents with correct character positioning
@@ -126,10 +144,12 @@
 - ✅ Cache CMaps to avoid repeated loading
 
 ## Phase 7: Resource Loading & Authentication
+
 **Duration**: 1-2 weeks  
 **Goal**: Robust document loading with authentication and error recovery
 
 ### Deliverables
+
 - **Resource Loader**: Handle URL fetching, binary arrays, and file uploads
 - **Auth Handler**: Support authentication tokens and session management
 - **Retry Logic**: Automatic retry with exponential backoff for failed requests
@@ -137,6 +157,7 @@
 - **Error Recovery**: Handle 403/401 errors with token refresh
 
 ### Acceptance Criteria
+
 - ✅ Load PDFs from URLs, File objects, and Uint8Array sources
 - ✅ Handle authentication headers and token refresh automatically
 - ✅ Retry failed requests up to 3 times with backoff
@@ -147,10 +168,12 @@
 - ✅ Support partial/range requests for large files
 
 ## Phase 8: Event System & UI Integration
+
 **Duration**: 2 weeks  
 **Goal**: Comprehensive event system and UI component integration
 
 ### Deliverables
+
 - **Event System**: Centralized event handling (PDFReady, ScaleChanged, PageRendered)
 - **Zoom Controller**: Smooth zoom with focus point preservation
 - **Pan Handler**: Mouse/touch-based document panning
@@ -159,6 +182,7 @@
 - **Overlay Manager**: Handle pop-up menus, tooltips, and modal dialogs
 
 ### Acceptance Criteria
+
 - ✅ Emit events for all major viewer state changes
 - ✅ Support zoom-to-fit, zoom-to-width, and custom zoom levels
 - ✅ Smooth pan operations with momentum scrolling on touch devices
@@ -169,10 +193,12 @@
 - ✅ Performance target: Event handling latency <16ms (60fps)
 
 ## Phase 9: Integration & Polish
+
 **Duration**: 2 weeks  
 **Goal**: Final integration, optimization, and production readiness
 
 ### Deliverables
+
 - **API Documentation**: Comprehensive viewer API documentation
 - **Usage Examples**: Complete examples for common use cases
 - **Performance Optimization**: Final performance tuning and memory optimization
@@ -181,6 +207,7 @@
 - **Bundle Optimization**: Minimize library size and optimize loading
 
 ### Acceptance Criteria
+
 - ✅ Complete API documentation with TypeScript definitions
 - ✅ Working examples for React, Vue, and vanilla JavaScript integration
 - ✅ Support modern browsers (Chrome 90+, Firefox 88+, Safari 14+, Edge 90+)
@@ -193,6 +220,7 @@
 ## Success Metrics
 
 ### Technical Performance
+
 - **Rendering Speed**: <200ms per page for typical documents
 - **Memory Usage**: <100MB for 500-page document
 - **Bundle Size**: <500KB gzipped core library
@@ -200,6 +228,7 @@
 - **UI Responsiveness**: <16ms event handling latency
 
 ### Feature Completeness
+
 - **Document Support**: 99.9% parsing success rate on real-world PDFs
 - **Text Operations**: Native selection, search, copy/paste functionality
 - **Visual Fidelity**: Pixel-perfect rendering compared to desktop PDF viewers
@@ -207,6 +236,7 @@
 - **Accessibility**: Full screen reader and keyboard navigation support
 
 ### Integration Quality
+
 - **Framework Support**: Drop-in components for React, Vue, Angular
 - **API Consistency**: Maintains LibPDF core API patterns
 - **Error Handling**: Graceful degradation and meaningful error messages

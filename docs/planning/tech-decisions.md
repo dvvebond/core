@@ -9,16 +9,20 @@ Based on my analysis of the LibPDF core codebase, this document outlines technol
 ## Core Technology Stack
 
 ### Runtime Environment
+
 **Chosen: Multi-Runtime JavaScript/TypeScript**
+
 - **Primary**: Bun (development) + Modern Browsers (production)
 - **Secondary**: Node.js 20+ support maintained
 - **Rationale**: LibPDF already targets universal JavaScript runtimes, maintaining this approach ensures maximum compatibility
-- **Alternatives Considered**: 
+- **Alternatives Considered**:
   - WebAssembly: Rejected due to complexity and LibPDF's pure JS architecture
   - Native solutions: Out of scope for web-based viewer requirements
 
 ### Language & Type System
+
 **Chosen: TypeScript 5.x with ESNext target**
+
 - **Configuration**: Bundler mode with strict type checking
 - **Rationale**: Matches LibPDF's existing TypeScript-first approach, enables excellent developer experience
 - **Evidence**: `tsconfig.json` shows `"target": "ESNext"`, `"strict": true`, comprehensive type definitions throughout codebase
@@ -27,9 +31,11 @@ Based on my analysis of the LibPDF core codebase, this document outlines technol
 ## Rendering Architecture
 
 ### Canvas Rendering Engine
+
 **Chosen: HTML5 Canvas API**
+
 - **Primary Renderer**: Direct Canvas 2D context manipulation
-- **Rationale**: 
+- **Rationale**:
   - LibPDF already has drawing operations (`src/drawing/`) that can be adapted
   - Canvas provides pixel-perfect control needed for PDF fidelity
   - Excellent performance for complex graphics and text rendering
@@ -39,10 +45,12 @@ Based on my analysis of the LibPDF core codebase, this document outlines technol
   - **WebGL**: Rejected due to complexity vs. benefit for PDF rendering
 
 ### Text Layer Implementation
+
 **Chosen: Transparent DOM Overlay**
+
 - **Architecture**: Positioned `<span>` elements overlaying Canvas
 - **Data Source**: LibPDF's existing `TextExtractor` and `ExtractedChar` types
-- **Rationale**: 
+- **Rationale**:
   - Enables native browser text selection/copy
   - LibPDF already provides character-level positioning data
   - Maintains accessibility without complex reimplementation
@@ -52,16 +60,20 @@ Based on my analysis of the LibPDF core codebase, this document outlines technol
 ## Performance & Scalability
 
 ### DOM Virtualization
+
 **Chosen: Custom Virtual Scrolling**
+
 - **Implementation**: Viewport-based page rendering with DOM recycling
 - **Rationale**: Essential for large documents (1000+ pages), memory management
 - **Inspiration**: Similar to PDF.js architecture but optimized for LibPDF's object model
 - **Trade-offs**: Implementation complexity vs. performance requirements
 
 ### Web Worker Architecture
+
 **Chosen: Multi-threaded Processing**
+
 - **Pattern**: Main thread UI + Worker thread for LibPDF operations
-- **Rationale**: 
+- **Rationale**:
   - Prevents UI blocking during heavy PDF parsing
   - LibPDF is pure JavaScript, easily portable to Workers
   - Critical for large file processing (100MB+ PDFs)
@@ -71,14 +83,18 @@ Based on my analysis of the LibPDF core codebase, this document outlines technol
 ## State Management & Events
 
 ### Event System
+
 **Chosen: Custom Event Architecture**
+
 - **Pattern**: Centralized event emitter with typed events
 - **Events**: `PDFReady`, `PageRendered`, `ScaleChanged`, `SearchComplete`
 - **Rationale**: Provides clean integration points for consuming applications
 - **Alternative Considered**: Browser native events - rejected for type safety
 
 ### Search Implementation
+
 **Chosen: Extend LibPDF's Text Search**
+
 - **Foundation**: Existing `findText()` methods in PDFPage
 - **Enhancement**: Visual highlighting overlay system
 - **Rationale**: Leverages LibPDF's robust text extraction, adds visual layer
@@ -87,14 +103,18 @@ Based on my analysis of the LibPDF core codebase, this document outlines technol
 ## UI & Integration
 
 ### Framework Compatibility
+
 **Chosen: Framework-Agnostic Core with Framework Adapters**
+
 - **Core**: Vanilla TypeScript classes
 - **Adapters**: React/Vue/Angular wrappers
 - **Rationale**: Maximum reusability, follows LibPDF's agnostic approach
 - **Evidence**: LibPDF itself is framework-agnostic with clean API boundaries
 
 ### Styling & Theming
+
 **Chosen: CSS Custom Properties**
+
 - **Approach**: Minimal built-in styles, extensive CSS variables
 - **Rationale**: Allows consumer customization without CSS conflicts
 - **Trade-offs**: More integration work for consumers but maximum flexibility
@@ -102,14 +122,18 @@ Based on my analysis of the LibPDF core codebase, this document outlines technol
 ## Build & Distribution
 
 ### Bundling Strategy
+
 **Chosen: tsdown (existing LibPDF toolchain)**
+
 - **Format**: ESM with TypeScript declarations
 - **Rationale**: Consistency with LibPDF's existing build process
 - **Evidence**: `tsdown.config.ts` already configured for LibPDF core
 - **Target**: `<500KB gzipped` for complete viewer functionality
 
 ### Package Structure
+
 **Chosen: Monolithic Package Extension**
+
 - **Approach**: Add viewer components to existing `@libpdf/core` package
 - **Rationale**: Simplifies dependency management, maintains API coherence
 - **Alternative Considered**: Separate `@libpdf/viewer` - rejected to avoid version conflicts
@@ -117,13 +141,17 @@ Based on my analysis of the LibPDF core codebase, this document outlines technol
 ## Development & Testing
 
 ### Testing Framework
+
 **Chosen: Vitest (existing LibPDF choice)**
+
 - **Rationale**: Already configured, excellent TypeScript integration
 - **Evidence**: `vitest.config.ts` and extensive test coverage in `src/**/*.test.ts`
 - **Browser Testing**: Playwright for DOM/Canvas integration tests
 
 ### Code Quality
+
 **Chosen: LibPDF's Existing Stack**
+
 - **Linting**: oxlint with TypeScript awareness
 - **Formatting**: oxfmt
 - **Rationale**: Maintains consistency with existing codebase standards
@@ -132,14 +160,18 @@ Based on my analysis of the LibPDF core codebase, this document outlines technol
 ## International & Accessibility
 
 ### Character Encoding
+
 **Chosen: Enhanced CMap Support**
+
 - **Extension**: Build on LibPDF's existing CMap infrastructure
 - **Addition**: Legacy CJK CMap support for international documents
 - **Evidence**: `src/fontbox/cmap/` already provides Unicode handling foundation
 - **Trade-offs**: Additional bundle size for comprehensive international support
 
 ### Accessibility
+
 **Chosen: WCAG 2.1 AA Compliance**
+
 - **Text Layer**: Enables screen reader access
 - **Keyboard Navigation**: Full keyboard control implementation
 - **Focus Management**: Proper tab order and focus indicators
@@ -148,7 +180,9 @@ Based on my analysis of the LibPDF core codebase, this document outlines technol
 ## Security Considerations
 
 ### Content Security Policy
+
 **Chosen: Strict CSP Compatibility**
+
 - **Workers**: No `eval()` or dynamic code generation
 - **Canvas**: Uses only safe Canvas APIs
 - **Rationale**: Enterprise deployment requirements
@@ -157,13 +191,17 @@ Based on my analysis of the LibPDF core codebase, this document outlines technol
 ## Risk Mitigation
 
 ### Browser Compatibility
+
 **Target**: Modern evergreen browsers (Chrome 90+, Firefox 88+, Safari 14+, Edge 90+)
+
 - **Rationale**: Matches LibPDF's existing Web Crypto requirements
 - **Testing**: Automated cross-browser testing in CI
 - **Fallbacks**: Graceful degradation for unsupported features
 
 ### Performance Monitoring
+
 **Chosen**: Built-in performance metrics collection
+
 - **Metrics**: Render time, memory usage, search performance
 - **Implementation**: Performance Observer API where available
 - **Rationale**: Critical for optimization and enterprise SLA compliance

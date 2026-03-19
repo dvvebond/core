@@ -15,7 +15,6 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
       "@dvvebond/core": ["../src/index.ts"],
       "@dvvebond/core/react": ["../src/react/index.ts"]

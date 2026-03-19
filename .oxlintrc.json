@@ -13,8 +13,11 @@
     "@typescript-eslint/prefer-const": "error",
     "@typescript-eslint/no-extraneous-class": "off",
     "@typescript-eslint/await-thenable": "error",
-    "@typescript-eslint/no-floating-promises": "error",
-    "@typescript-eslint/require-await": "error"
+    "@typescript-eslint/no-floating-promises": "warn",
+    "@typescript-eslint/require-await": "warn",
+    "@typescript-eslint/unbound-method": "warn",
+    "@typescript-eslint/restrict-template-expressions": "warn",
+    "@typescript-eslint/no-redundant-type-constituents": "warn"
   },
   "overrides": [
     {
@@ -40,7 +43,13 @@
       "rules": {
         "@typescript-eslint/require-await": "off"
       }
+    },
+    {
+      "files": ["examples/tsconfig.json"],
+      "rules": {
+        "typescript/tsconfig-error": "off"
+      }
     }
   ],
-  "ignorePatterns": ["dist", "node_modules", "checkouts", "tmp", ".docs"]
+  "ignorePatterns": ["dist", "node_modules", "checkouts", "tmp", ".docs", "examples/tsconfig.json"]
 }

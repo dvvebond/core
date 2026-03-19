@@ -74,10 +74,7 @@ export {
 // Spatial Positioning
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type {
-  SpatialPositioningOptions,
-  NearestTextResult,
-} from "./spatial-positioning";
+export type { SpatialPositioningOptions, NearestTextResult } from "./spatial-positioning";
 
 export {
   findNearestText,

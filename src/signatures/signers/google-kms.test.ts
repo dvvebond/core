@@ -312,12 +312,12 @@ describe.skipIf(!canRunIntegrationTests)("GoogleKmsSigner integration", () => {
   beforeAll(async () => {
     // Load test certificates if paths are provided
     if (rsaCertPath) {
-      const fs = await import("fs/promises");
-      rsaCertificate = new Uint8Array(await fs.readFile(rsaCertPath));
+      const fsPromises = await import("fs/promises");
+      rsaCertificate = new Uint8Array(await fsPromises.readFile(rsaCertPath));
     }
     if (ecCertPath) {
-      const fs = await import("fs/promises");
-      ecCertificate = new Uint8Array(await fs.readFile(ecCertPath));
+      const fsPromises = await import("fs/promises");
+      ecCertificate = new Uint8Array(await fsPromises.readFile(ecCertPath));
     }
   });
 

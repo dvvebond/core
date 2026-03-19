@@ -371,7 +371,7 @@ async function initializeViewer(): Promise<void> {
           // Store text spans for highlighting
           state.pageTextSpans.set(pageIndex, result.textSpans);
 
-          container!.appendChild(textLayerDiv);
+          container.appendChild(textLayerDiv);
 
           // Highlight search results on this page
           highlightSearchResults(pageIndex);

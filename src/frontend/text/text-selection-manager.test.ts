@@ -22,9 +22,7 @@ import {
   type TextSpanInfo,
   type SelectionPoint,
 } from "./selection-state";
-import {
-  findSpanAtOffset,
-} from "./spatial-positioning";
+import { findSpanAtOffset } from "./spatial-positioning";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Selection State Tests
@@ -197,8 +195,22 @@ describe("Spatial Positioning", () => {
   describe("findSpanAtOffset", () => {
     it("should find span containing offset", () => {
       const spans: TextSpanInfo[] = [
-        { element: {} as HTMLElement, text: "Hello", startOffset: 0, endOffset: 5, bounds: {} as DOMRect, pageIndex: 0 },
-        { element: {} as HTMLElement, text: " World", startOffset: 5, endOffset: 11, bounds: {} as DOMRect, pageIndex: 0 },
+        {
+          element: {} as HTMLElement,
+          text: "Hello",
+          startOffset: 0,
+          endOffset: 5,
+          bounds: {} as DOMRect,
+          pageIndex: 0,
+        },
+        {
+          element: {} as HTMLElement,
+          text: " World",
+          startOffset: 5,
+          endOffset: 11,
+          bounds: {} as DOMRect,
+          pageIndex: 0,
+        },
       ];
 
       const span = findSpanAtOffset(7, spans);
@@ -207,7 +219,14 @@ describe("Spatial Positioning", () => {
 
     it("should return null for out of range offset", () => {
       const spans: TextSpanInfo[] = [
-        { element: {} as HTMLElement, text: "Hello", startOffset: 0, endOffset: 5, bounds: {} as DOMRect, pageIndex: 0 },
+        {
+          element: {} as HTMLElement,
+          text: "Hello",
+          startOffset: 0,
+          endOffset: 5,
+          bounds: {} as DOMRect,
+          pageIndex: 0,
+        },
       ];
 
       const span = findSpanAtOffset(10, spans);
@@ -216,7 +235,14 @@ describe("Spatial Positioning", () => {
 
     it("should find span at exact end", () => {
       const spans: TextSpanInfo[] = [
-        { element: {} as HTMLElement, text: "Hello", startOffset: 0, endOffset: 5, bounds: {} as DOMRect, pageIndex: 0 },
+        {
+          element: {} as HTMLElement,
+          text: "Hello",
+          startOffset: 0,
+          endOffset: 5,
+          bounds: {} as DOMRect,
+          pageIndex: 0,
+        },
       ];
 
       const span = findSpanAtOffset(5, spans);
@@ -225,8 +251,22 @@ describe("Spatial Positioning", () => {
 
     it("should find span at exact start", () => {
       const spans: TextSpanInfo[] = [
-        { element: {} as HTMLElement, text: "Hello", startOffset: 0, endOffset: 5, bounds: {} as DOMRect, pageIndex: 0 },
-        { element: {} as HTMLElement, text: " World", startOffset: 5, endOffset: 11, bounds: {} as DOMRect, pageIndex: 0 },
+        {
+          element: {} as HTMLElement,
+          text: "Hello",
+          startOffset: 0,
+          endOffset: 5,
+          bounds: {} as DOMRect,
+          pageIndex: 0,
+        },
+        {
+          element: {} as HTMLElement,
+          text: " World",
+          startOffset: 5,
+          endOffset: 11,
+          bounds: {} as DOMRect,
+          pageIndex: 0,
+        },
       ];
 
       const span = findSpanAtOffset(0, spans);

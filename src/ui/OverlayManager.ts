@@ -405,8 +405,8 @@ export class OverlayManager {
 
     // Restore focus
     const returnTarget = entry.config.returnFocusTo ?? entry.previousActiveElement;
-    if (returnTarget && typeof (returnTarget as HTMLElement).focus === "function") {
-      (returnTarget as HTMLElement).focus();
+    if (returnTarget && typeof returnTarget.focus === "function") {
+      returnTarget.focus();
     }
     entry.previousActiveElement = null;
 

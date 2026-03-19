@@ -7,12 +7,7 @@
  */
 
 import type { Point2D } from "../coordinate-transformer";
-import type {
-  SelectionPoint,
-  TextLayerInfo,
-  TextPosition,
-  TextSpanInfo,
-} from "./selection-state";
+import type { SelectionPoint, TextLayerInfo, TextPosition, TextSpanInfo } from "./selection-state";
 
 /**
  * Options for spatial positioning calculations.
@@ -82,7 +77,9 @@ export function findNearestText(
   let bestDistance = Infinity;
 
   for (const layer of textLayers) {
-    if (!layer.isVisible) {continue;}
+    if (!layer.isVisible) {
+      continue;
+    }
 
     for (const span of layer.spans) {
       const result = findNearestPositionInSpan(screenPoint, span, layer.pageIndex);
@@ -165,14 +162,20 @@ function calculateCharOffsetFromX(x: number, span: TextSpanInfo): number {
   const bounds = span.bounds;
   const text = span.text;
 
-  if (text.length === 0) {return 0;}
+  if (text.length === 0) {
+    return 0;
+  }
 
   // Calculate relative position within span
   const relativeX = x - bounds.left;
   const spanWidth = bounds.width;
 
-  if (spanWidth === 0 || relativeX <= 0) {return 0;}
-  if (relativeX >= spanWidth) {return text.length;}
+  if (spanWidth === 0 || relativeX <= 0) {
+    return 0;
+  }
+  if (relativeX >= spanWidth) {
+    return text.length;
+  }
 
   // Estimate character position assuming uniform character width
   const charWidth = spanWidth / text.length;
@@ -199,7 +202,9 @@ function distanceToRect(point: Point2D, rect: DOMRect): number {
  */
 export function findPageAtPoint(screenPoint: Point2D, textLayers: TextLayerInfo[]): number {
   for (const layer of textLayers) {
-    if (!layer.isVisible) {continue;}
+    if (!layer.isVisible) {
+      continue;
+    }
 
     const containerRect = layer.container.getBoundingClientRect();
     if (
@@ -285,12 +290,11 @@ export function findSpanAtOffset(charOffset: number, spans: TextSpanInfo[]): Tex
  * @param layer - The text layer information
  * @returns The screen position, or null if not found
  */
-export function getScreenPositionForChar(
-  charOffset: number,
-  layer: TextLayerInfo,
-): Point2D | null {
+export function getScreenPositionForChar(charOffset: number, layer: TextLayerInfo): Point2D | null {
   const span = findSpanAtOffset(charOffset, layer.spans);
-  if (!span) {return null;}
+  if (!span) {
+    return null;
+  }
 
   const localOffset = charOffset - span.startOffset;
   const bounds = span.bounds;
@@ -316,9 +320,7 @@ export function findSpansInRange(
   endOffset: number,
   layer: TextLayerInfo,
 ): TextSpanInfo[] {
-  return layer.spans.filter(
-    span => span.endOffset > startOffset && span.startOffset < endOffset,
-  );
+  return layer.spans.filter(span => span.endOffset > startOffset && span.startOffset < endOffset);
 }
 
 /**
@@ -327,9 +329,7 @@ export function findSpansInRange(
  * @param containers - Map of page index to text layer container elements
  * @returns Array of text layer information
  */
-export function collectTextLayerInfo(
-  containers: Map<number, HTMLElement>,
-): TextLayerInfo[] {
+export function collectTextLayerInfo(containers: Map<number, HTMLElement>): TextLayerInfo[] {
   const layers: TextLayerInfo[] = [];
 
   for (const [pageIndex, container] of Array.from(containers)) {
@@ -366,7 +366,9 @@ export function collectSpanInfo(container: HTMLElement, pageIndex: number): Text
 
   for (const element of Array.from(elements)) {
     const text = element.textContent ?? "";
-    if (text.length === 0) {continue;}
+    if (text.length === 0) {
+      continue;
+    }
 
     const bounds = element.getBoundingClientRect();
 
@@ -408,7 +410,9 @@ export function findNearestLine(
   screenPoint: Point2D,
   layer: TextLayerInfo,
 ): { spans: TextSpanInfo[]; distance: number } | null {
-  if (layer.spans.length === 0) {return null;}
+  if (layer.spans.length === 0) {
+    return null;
+  }
 
   // Group spans by their vertical position (approximate line grouping)
   const lineGroups = groupSpansByLine(layer.spans);
@@ -449,7 +453,9 @@ export function findNearestLine(
  * Group spans into lines based on their vertical position.
  */
 function groupSpansByLine(spans: TextSpanInfo[], tolerance = 5): TextSpanInfo[][] {
-  if (spans.length === 0) {return [];}
+  if (spans.length === 0) {
+    return [];
+  }
 
   // Sort by vertical position
   const sorted = [...spans].sort((a, b) => {
@@ -486,14 +492,18 @@ function groupSpansByLine(spans: TextSpanInfo[], tolerance = 5): TextSpanInfo[][
  */
 export function getLineStart(charOffset: number, layer: TextLayerInfo): number {
   const span = findSpanAtOffset(charOffset, layer.spans);
-  if (!span) {return charOffset;}
+  if (!span) {
+    return charOffset;
+  }
 
   const nearestLine = findNearestLine(
     { x: span.bounds.left, y: (span.bounds.top + span.bounds.bottom) / 2 },
     layer,
   );
 
-  if (!nearestLine) {return charOffset;}
+  if (!nearestLine) {
+    return charOffset;
+  }
 
   // Find the leftmost span in this line
   const leftmostSpan = nearestLine.spans.reduce((left, s) =>
@@ -508,14 +518,18 @@ export function getLineStart(charOffset: number, layer: TextLayerInfo): number {
  */
 export function getLineEnd(charOffset: number, layer: TextLayerInfo): number {
   const span = findSpanAtOffset(charOffset, layer.spans);
-  if (!span) {return charOffset;}
+  if (!span) {
+    return charOffset;
+  }
 
   const nearestLine = findNearestLine(
     { x: span.bounds.left, y: (span.bounds.top + span.bounds.bottom) / 2 },
     layer,
   );
 
-  if (!nearestLine) {return charOffset;}
+  if (!nearestLine) {
+    return charOffset;
+  }
 
   // Find the rightmost span in this line
   const rightmostSpan = nearestLine.spans.reduce((right, s) =>

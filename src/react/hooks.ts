@@ -400,7 +400,7 @@ export function usePDFSearch(options: {
     // Set up event listeners
     engine.addEventListener("state-change", event => {
       if ("state" in event) {
-        const engineState = event.state as SearchState;
+        const engineState = event.state;
         setSearchState({
           query: engineState.query,
           options: engineState.options,
@@ -424,10 +424,7 @@ export function usePDFSearch(options: {
 
     engine.addEventListener("result-change", event => {
       if ("result" in event && "currentIndex" in event) {
-        options.onCurrentResultChange?.(
-          event.result as SearchResult | null,
-          event.currentIndex as number,
-        );
+        options.onCurrentResultChange?.(event.result, event.currentIndex);
       }
     });
 
@@ -535,7 +532,7 @@ export function useBoundingBoxOverlay(options: {
           ...prev,
           visibility: event.visibility as BoundingBoxVisibility,
         }));
-        options.onVisibilityChange?.(event.visibility as BoundingBoxVisibility);
+        options.onVisibilityChange?.(event.visibility);
       }
     });
 

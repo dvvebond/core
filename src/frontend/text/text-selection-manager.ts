@@ -13,6 +13,11 @@
  */
 
 import type { Point2D } from "../coordinate-transformer";
+import {
+  createSelectionRenderer,
+  SelectionRenderer,
+  type SelectionRendererOptions,
+} from "./selection-renderer";
 import type {
   DragState,
   PageSelectionRange,
@@ -39,7 +44,6 @@ import {
   findNearestText,
   refreshSpanBounds,
 } from "./spatial-positioning";
-import { createSelectionRenderer, SelectionRenderer, type SelectionRendererOptions } from "./selection-renderer";
 
 /**
  * Options for the TextSelectionManager.
@@ -80,7 +84,9 @@ export interface TextSelectionManagerOptions {
   debounceInterval?: number;
 }
 
-const DEFAULT_OPTIONS: Required<Omit<TextSelectionManagerOptions, "container" | "rendererOptions">> = {
+const DEFAULT_OPTIONS: Required<
+  Omit<TextSelectionManagerOptions, "container" | "rendererOptions">
+> = {
   preventDefaultSelection: true,
   useCustomRendering: true,
   maxTextSearchDistance: 100,
@@ -115,7 +121,9 @@ const DEFAULT_OPTIONS: Required<Omit<TextSelectionManagerOptions, "container" | 
  */
 export class TextSelectionManager {
   private readonly container: HTMLElement;
-  private readonly options: Required<Omit<TextSelectionManagerOptions, "container" | "rendererOptions">>;
+  private readonly options: Required<
+    Omit<TextSelectionManagerOptions, "container" | "rendererOptions">
+  >;
   private readonly textLayerContainers: Map<number, HTMLElement> = new Map();
   private readonly eventListeners: Map<SelectionEventType, Set<SelectionEventListener>> = new Map();
 
@@ -134,7 +142,8 @@ export class TextSelectionManager {
   constructor(options: TextSelectionManagerOptions) {
     this.container = options.container;
     this.options = {
-      preventDefaultSelection: options.preventDefaultSelection ?? DEFAULT_OPTIONS.preventDefaultSelection,
+      preventDefaultSelection:
+        options.preventDefaultSelection ?? DEFAULT_OPTIONS.preventDefaultSelection,
       useCustomRendering: options.useCustomRendering ?? DEFAULT_OPTIONS.useCustomRendering,
       maxTextSearchDistance: options.maxTextSearchDistance ?? DEFAULT_OPTIONS.maxTextSearchDistance,
       debounceInterval: options.debounceInterval ?? DEFAULT_OPTIONS.debounceInterval,
@@ -158,7 +167,9 @@ export class TextSelectionManager {
    * Enable the text selection manager.
    */
   enable(): void {
-    if (this.enabled) {return;}
+    if (this.enabled) {
+      return;
+    }
     this.enabled = true;
 
     // Add event listeners to container
@@ -175,7 +186,9 @@ export class TextSelectionManager {
    * Disable the text selection manager.
    */
   disable(): void {
-    if (!this.enabled) {return;}
+    if (!this.enabled) {
+      return;
+    }
     this.enabled = false;
 
     // Remove event listeners
@@ -297,7 +310,9 @@ export class TextSelectionManager {
    * Update positions after zoom or scroll changes.
    */
   updatePositions(): void {
-    if (!this.state.hasSelection) {return;}
+    if (!this.state.hasSelection) {
+      return;
+    }
 
     const textLayers = this.collectTextLayers();
     for (const layer of textLayers) {
@@ -330,7 +345,9 @@ export class TextSelectionManager {
    */
   private handleMouseDown(event: MouseEvent): void {
     // Only handle primary button (left click)
-    if (event.button !== 0) {return;}
+    if (event.button !== 0) {
+      return;
+    }
 
     const screenPoint = this.getScreenPoint(event);
     const textLayers = this.collectTextLayers();
@@ -339,14 +356,18 @@ export class TextSelectionManager {
     });
 
     // Check if click is in a text layer
-    if (selectionPoint.pageIndex < 0) {return;}
+    if (selectionPoint.pageIndex < 0) {
+      return;
+    }
 
     // Start intercepting if we're in or near text
     const nearestText = findNearestText(screenPoint, textLayers, {
       maxSearchDistance: this.options.maxTextSearchDistance,
     });
 
-    if (!nearestText) {return;}
+    if (!nearestText) {
+      return;
+    }
 
     // Start drag
     this.isIntercepting = true;
@@ -387,7 +408,9 @@ export class TextSelectionManager {
    * Handle mousemove event.
    */
   private handleMouseMove(event: MouseEvent): void {
-    if (!this.isIntercepting || !this.state.dragState.isDragging) {return;}
+    if (!this.isIntercepting || !this.state.dragState.isDragging) {
+      return;
+    }
 
     const screenPoint = this.getScreenPoint(event);
     const textLayers = this.collectTextLayers();
@@ -448,7 +471,9 @@ export class TextSelectionManager {
    * Handle mouseup event.
    */
   private handleMouseUp(event: MouseEvent): void {
-    if (!this.isIntercepting) {return;}
+    if (!this.isIntercepting) {
+      return;
+    }
 
     const wasInNonTextArea = this.state.dragState.hasLeftTextLayer;
 
@@ -504,7 +529,9 @@ export class TextSelectionManager {
    */
   private updateSelection(): void {
     const { anchor, focus } = this.state;
-    if (!anchor || !focus) {return;}
+    if (!anchor || !focus) {
+      return;
+    }
 
     const anchorPos = anchor.point.textPosition;
     const focusPos = focus.textPosition;
@@ -619,7 +646,9 @@ export class TextSelectionManager {
    */
   private createNativeSelection(range: PageSelectionRange, layer: TextLayerInfo): void {
     const selection = window.getSelection();
-    if (!selection) {return;}
+    if (!selection) {
+      return;
+    }
 
     // Find start and end nodes
     let startNode: Node | null = null;

@@ -77,10 +77,7 @@ export class SelectionRenderer {
   private dragIndicator: HTMLElement | null = null;
   private isActive = false;
 
-  constructor(
-    container: HTMLElement,
-    options: SelectionRendererOptions = {},
-  ) {
+  constructor(container: HTMLElement, options: SelectionRendererOptions = {}) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
 
     // Create overlay container
@@ -133,7 +130,9 @@ export class SelectionRenderer {
    * @param textLayers - Text layer information for calculating positions
    */
   render(ranges: PageSelectionRange[], textLayers: TextLayerInfo[]): void {
-    if (!this.isActive) {return;}
+    if (!this.isActive) {
+      return;
+    }
 
     // Clear existing highlights for pages not in the new ranges
     const pageIndices = new Set(ranges.map(r => r.pageIndex));
@@ -154,7 +153,9 @@ export class SelectionRenderer {
    */
   private renderPageRange(range: PageSelectionRange, textLayers: TextLayerInfo[]): void {
     const layer = textLayers.find(l => l.pageIndex === range.pageIndex);
-    if (!layer) {return;}
+    if (!layer) {
+      return;
+    }
 
     // Clear existing highlights for this page
     this.clearPage(range.pageIndex);
@@ -169,7 +170,9 @@ export class SelectionRenderer {
       const spanStart = Math.max(span.startOffset, range.startOffset);
       const spanEnd = Math.min(span.endOffset, range.endOffset);
 
-      if (spanEnd <= spanStart) {continue;}
+      if (spanEnd <= spanStart) {
+        continue;
+      }
 
       // Calculate highlight bounds
       const bounds = this.calculateHighlightBounds(span, spanStart, spanEnd, layer);
@@ -250,7 +253,9 @@ export class SelectionRenderer {
    * @param isInNonTextArea - Whether the position is in a non-text area
    */
   showDragIndicator(position: Point2D, isInNonTextArea: boolean): void {
-    if (!this.options.showDragIndicator) {return;}
+    if (!this.options.showDragIndicator) {
+      return;
+    }
 
     if (!this.dragIndicator) {
       this.dragIndicator = document.createElement("div");
@@ -289,24 +294,25 @@ export class SelectionRenderer {
    * @param textLayers - Updated text layer information
    */
   updatePositions(textLayers: TextLayerInfo[]): void {
-    if (!this.isActive) {return;}
+    if (!this.isActive) {
+      return;
+    }
 
     for (const [pageIndex, rects] of Array.from(this.highlightRects)) {
       const layer = textLayers.find(l => l.pageIndex === pageIndex);
-      if (!layer) {continue;}
+      if (!layer) {
+        continue;
+      }
 
       for (const rect of rects) {
         const span = layer.spans.find(
           s => s.startOffset <= rect.startOffset && s.endOffset >= rect.endOffset,
         );
-        if (!span) {continue;}
+        if (!span) {
+          continue;
+        }
 
-        const bounds = this.calculateHighlightBounds(
-          span,
-          rect.startOffset,
-          rect.endOffset,
-          layer,
-        );
+        const bounds = this.calculateHighlightBounds(span, rect.startOffset, rect.endOffset, layer);
 
         rect.element.style.left = `${bounds.left}px`;
         rect.element.style.top = `${bounds.top}px`;
