@@ -68,7 +68,7 @@ export function analyzeFonts(resources: PdfDict | undefined, resolver?: RefResol
   }
 
   for (const [fontKey] of fonts) {
-    const fontName = fontKey.name;
+    const fontName = fontKey.value;
     analysis.fontNames.push(fontName);
     analysis.fontCount++;
 
@@ -79,8 +79,8 @@ export function analyzeFonts(resources: PdfDict | undefined, resolver?: RefResol
     }
 
     const fontDict = fontObj;
-    const fontType = fontDict.getName("Subtype", resolver)?.name;
-    const baseFont = fontDict.getName("BaseFont", resolver)?.name;
+    const fontType = fontDict.getName("Subtype", resolver)?.value;
+    const baseFont = fontDict.getName("BaseFont", resolver)?.value;
 
     // Check for Type 3 (bitmap) fonts
     if (fontType === "Type3") {
@@ -151,7 +151,7 @@ export function analyzeImages(
 
     const stream = xobj as PdfStream;
     const dict = stream.dict;
-    const subtype = dict.getName("Subtype", resolver)?.name;
+    const subtype = dict.getName("Subtype", resolver)?.value;
 
     if (subtype !== "Image") {
       continue;
@@ -237,7 +237,7 @@ export function countFormXObjects(resources: PdfDict | undefined, resolver?: Ref
     }
 
     const stream = xobj as PdfStream;
-    const subtype = stream.dict.getName("Subtype", resolver)?.name;
+    const subtype = stream.dict.getName("Subtype", resolver)?.value;
 
     if (subtype === "Form") {
       count++;
@@ -283,9 +283,9 @@ function extractFilterNames(filter: unknown): string[] {
 
   // Single filter (PdfName)
   if (typeof filter === "object" && "type" in filter) {
-    const typed = filter as { type: string; name?: string };
-    if (typed.type === "name" && typed.name) {
-      return [typed.name];
+    const typed = filter as { type: string; value?: string };
+    if (typed.type === "name" && typed.value) {
+      return [typed.value];
     }
 
     // Array of filters
@@ -293,9 +293,9 @@ function extractFilterNames(filter: unknown): string[] {
       const names: string[] = [];
       for (const item of filter as Iterable<unknown>) {
         if (typeof item === "object" && item && "type" in item) {
-          const itemTyped = item as { type: string; name?: string };
-          if (itemTyped.type === "name" && itemTyped.name) {
-            names.push(itemTyped.name);
+          const itemTyped = item as { type: string; value?: string };
+          if (itemTyped.type === "name" && itemTyped.value) {
+            names.push(itemTyped.value);
           }
         }
       }

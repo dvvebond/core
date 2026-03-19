@@ -120,3 +120,61 @@ export {
   type ScreenBoundingBox,
   type PageContainerTransformerOptions,
 } from "./coordinate-transformer";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Text Selection
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  // Selection Manager
+  TextSelectionManager,
+  createTextSelectionManager,
+  type TextSelectionManagerOptions,
+  // Selection Renderer
+  SelectionRenderer,
+  createSelectionRenderer,
+  type SelectionRendererOptions,
+  // Spatial Positioning
+  findNearestText,
+  findPageAtPoint,
+  createSelectionPointFromScreen,
+  findSpanAtOffset,
+  getScreenPositionForChar,
+  findSpansInRange,
+  collectTextLayerInfo,
+  collectSpanInfo,
+  refreshSpanBounds,
+  findNearestLine,
+  getLineStart,
+  getLineEnd,
+  type SpatialPositioningOptions,
+  type NearestTextResult,
+  // Selection State
+  createInitialSelectionState,
+  createInitialDragState,
+  createSelectionEvent as createTextSelectionEvent,
+  createSelectionAnchor,
+  textPositionsEqual,
+  compareTextPositions,
+  getOrderedPositions,
+  // Selection State Types
+  type TextPosition,
+  type SelectionPoint,
+  type SelectionAnchor,
+  type DragState,
+  type PageSelectionRange,
+  type SelectionState,
+  type TextSpanInfo,
+  type TextLayerInfo,
+  type SelectionEventType,
+  type BaseSelectionEvent,
+  type SelectionStartEvent,
+  type SelectionChangeEvent,
+  type SelectionEndEvent,
+  type DragStartEvent,
+  type DragMoveEvent,
+  type DragEndEvent,
+  type NonTextCrossingEvent,
+  type SelectionEvent,
+  type SelectionEventListener,
+} from "./text";

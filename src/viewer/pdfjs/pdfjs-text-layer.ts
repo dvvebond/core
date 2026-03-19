@@ -4,6 +4,17 @@
  * This module provides text layer functionality using PDF.js's text content
  * extraction and positioning. It creates a transparent DOM overlay that enables
  * native browser text selection over rendered PDF pages.
+ *
+ * Integration with TextSelectionManager:
+ * When using the TextSelectionManager for custom text selection (solving the
+ * drag-across-non-text issue), register text layer containers with the manager
+ * after building them:
+ *
+ * @example
+ * ```ts
+ * const textLayer = await buildPDFJSTextLayer(page, options);
+ * selectionManager.registerTextLayer(pageIndex, textLayer.container);
+ * ```
  */
 
 import type {
@@ -34,6 +45,12 @@ export interface PDFJSTextLayerOptions {
    * @default true
    */
   enhanceTextAccessibility?: boolean;
+
+  /**
+   * The page index for this text layer (0-based).
+   * Used when integrating with TextSelectionManager.
+   */
+  pageIndex?: number;
 }
 
 /**
@@ -57,6 +74,7 @@ export interface PDFJSTextLayerResult {
 
   /**
    * Array of text spans with their character offsets for highlighting.
+   * Compatible with TextSelectionManager's TextSpanInfo interface.
    */
   textSpans: Array<{
     element: HTMLElement;
@@ -64,6 +82,17 @@ export interface PDFJSTextLayerResult {
     startOffset: number;
     endOffset: number;
   }>;
+
+  /**
+   * The page index if provided in options.
+   */
+  pageIndex?: number;
+
+  /**
+   * The full text content of the layer.
+   * Useful for text extraction and selection.
+   */
+  fullText: string;
 }
 
 /**
@@ -80,7 +109,7 @@ export async function buildPDFJSTextLayer(
   page: PDFPageProxy,
   options: PDFJSTextLayerOptions,
 ): Promise<PDFJSTextLayerResult> {
-  const { container, viewport, enhanceTextAccessibility = true } = options;
+  const { container, viewport, enhanceTextAccessibility = true, pageIndex } = options;
 
   // Clear existing content
   while (container.firstChild) {
@@ -146,11 +175,16 @@ export async function buildPDFJSTextLayer(
     document.body.removeChild(measureSpan);
   }
 
+  // Build full text for text extraction/selection
+  const fullText = textSpans.map(span => span.text).join("");
+
   return {
     divCount,
     container,
     textContent,
     textSpans,
+    pageIndex,
+    fullText,
   };
 }
 
@@ -281,27 +315,49 @@ function mapFontName(fontName: string): string {
 
 /**
  * Class-based text layer builder for more control.
+ *
+ * This builder can be integrated with the TextSelectionManager for
+ * robust text selection that works across non-text areas:
+ *
+ * @example
+ * ```ts
+ * const builder = createPDFJSTextLayerBuilder({
+ *   container: textLayerDiv,
+ *   viewport: viewport,
+ *   pageIndex: 0,
+ * });
+ *
+ * const result = await builder.build(page);
+ *
+ * // Register with selection manager
+ * selectionManager.registerTextLayer(0, result.container);
+ * ```
  */
 export class PDFJSTextLayerBuilder {
   private readonly _container: HTMLElement;
   private readonly _viewport: PageViewport;
   private readonly _enhanceAccessibility: boolean;
+  private readonly _pageIndex?: number;
+  private _lastResult: PDFJSTextLayerResult | null = null;
 
   constructor(options: PDFJSTextLayerOptions) {
     this._container = options.container;
     this._viewport = options.viewport;
     this._enhanceAccessibility = options.enhanceTextAccessibility ?? true;
+    this._pageIndex = options.pageIndex;
   }
 
   /**
    * Build the text layer from a PDF page.
    */
   async build(page: PDFPageProxy): Promise<PDFJSTextLayerResult> {
-    return buildPDFJSTextLayer(page, {
+    this._lastResult = await buildPDFJSTextLayer(page, {
       container: this._container,
       viewport: this._viewport,
       enhanceTextAccessibility: this._enhanceAccessibility,
+      pageIndex: this._pageIndex,
     });
+    return this._lastResult;
   }
 
   /**
@@ -311,6 +367,7 @@ export class PDFJSTextLayerBuilder {
     while (this._container.firstChild) {
       this._container.removeChild(this._container.firstChild);
     }
+    this._lastResult = null;
   }
 
   /**
@@ -325,6 +382,28 @@ export class PDFJSTextLayerBuilder {
    */
   get viewport(): PageViewport {
     return this._viewport;
+  }
+
+  /**
+   * Get the page index.
+   */
+  get pageIndex(): number | undefined {
+    return this._pageIndex;
+  }
+
+  /**
+   * Get the last build result.
+   * Useful for accessing text spans for selection integration.
+   */
+  get lastResult(): PDFJSTextLayerResult | null {
+    return this._lastResult;
+  }
+
+  /**
+   * Get the full text content from the last build.
+   */
+  get fullText(): string {
+    return this._lastResult?.fullText ?? "";
   }
 }
 

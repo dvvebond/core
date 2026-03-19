@@ -825,6 +825,65 @@ export {
 } from "./frontend";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Frontend Text Selection
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  // Selection Manager - handles text selection across PDF pages,
+  // solving the issue of selection resetting when dragging across non-text areas
+  TextSelectionManager,
+  createTextSelectionManager,
+  type TextSelectionManagerOptions,
+  // Selection Renderer - custom highlighting overlay for non-text areas
+  SelectionRenderer,
+  createSelectionRenderer,
+  type SelectionRendererOptions,
+  // Spatial Positioning - coordinate-to-text mapping
+  findNearestText,
+  findPageAtPoint,
+  createSelectionPointFromScreen,
+  findSpanAtOffset,
+  getScreenPositionForChar,
+  findSpansInRange,
+  collectTextLayerInfo,
+  collectSpanInfo,
+  refreshSpanBounds,
+  findNearestLine,
+  getLineStart,
+  getLineEnd,
+  type SpatialPositioningOptions,
+  type NearestTextResult,
+  // Selection State utilities
+  createInitialSelectionState,
+  createInitialDragState,
+  createTextSelectionEvent,
+  createSelectionAnchor,
+  textPositionsEqual,
+  compareTextPositions,
+  getOrderedPositions,
+  // Selection State Types
+  type TextPosition,
+  type SelectionPoint,
+  type SelectionAnchor,
+  type DragState,
+  type PageSelectionRange,
+  type SelectionState,
+  type TextSpanInfo,
+  type TextLayerInfo,
+  type SelectionEventType,
+  type BaseSelectionEvent,
+  type SelectionStartEvent,
+  type SelectionChangeEvent,
+  type SelectionEndEvent,
+  type DragStartEvent,
+  type DragMoveEvent,
+  type DragEndEvent,
+  type NonTextCrossingEvent,
+  type SelectionEvent,
+  type SelectionEventListener,
+} from "./frontend";
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Content Stream Processing
 // ─────────────────────────────────────────────────────────────────────────────
 
