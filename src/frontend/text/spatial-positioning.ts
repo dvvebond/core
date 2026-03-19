@@ -233,10 +233,19 @@ export function createSelectionPointFromScreen(
   options: SpatialPositioningOptions = {},
 ): SelectionPoint {
   const pageIndex = findPageAtPoint(screenPoint, textLayers);
-  const nearestText = findNearestText(screenPoint, textLayers, options);
+  let nearestText = findNearestText(screenPoint, textLayers, options);
 
   const isInText = nearestText?.isDirectHit ?? false;
   const isInNonTextArea = pageIndex >= 0 && !isInText;
+
+  // If we're inside a page but didn't find text within the normal search distance,
+  // expand the search to find the nearest line boundary for proper selection extension
+  if (!nearestText && pageIndex >= 0) {
+    const pageLayer = textLayers.find(l => l.pageIndex === pageIndex);
+    if (pageLayer && pageLayer.spans.length > 0) {
+      nearestText = findNearestTextWithLineAwareness(screenPoint, pageLayer);
+    }
+  }
 
   let textPosition: TextPosition | undefined;
   if (nearestText) {
@@ -258,6 +267,96 @@ export function createSelectionPointFromScreen(
     isInText,
     isInNonTextArea,
   };
+}
+
+/**
+ * Find nearest text with line-aware positioning for non-text areas.
+ *
+ * When the cursor is in a non-text area (margins, gutters, between lines),
+ * this function finds the appropriate boundary position based on the cursor's
+ * vertical and horizontal position relative to the text lines.
+ */
+function findNearestTextWithLineAwareness(
+  screenPoint: Point2D,
+  layer: TextLayerInfo,
+): NearestTextResult | null {
+  const nearestLine = findNearestLine(screenPoint, layer);
+  if (!nearestLine || nearestLine.spans.length === 0) {
+    return null;
+  }
+
+  const lineSpans = nearestLine.spans;
+
+  // Sort line spans by horizontal position
+  const sortedSpans = [...lineSpans].sort((a, b) => a.bounds.left - b.bounds.left);
+  const lineLeft = sortedSpans[0].bounds.left;
+  const lineRight = sortedSpans[sortedSpans.length - 1].bounds.right;
+
+  // Determine position based on horizontal location relative to the line
+  let targetSpan: TextSpanInfo;
+  let charOffset: number;
+
+  if (screenPoint.x < lineLeft) {
+    // Cursor is to the left of the line - snap to line start
+    targetSpan = sortedSpans[0];
+    charOffset = targetSpan.startOffset;
+  } else if (screenPoint.x > lineRight) {
+    // Cursor is to the right of the line - snap to line end
+    targetSpan = sortedSpans[sortedSpans.length - 1];
+    charOffset = targetSpan.endOffset;
+  } else {
+    // Cursor is horizontally within the line bounds
+    // Find the closest span and position within it
+    let bestSpan = sortedSpans[0];
+    let bestDistance = Infinity;
+
+    for (const span of sortedSpans) {
+      const dx = Math.max(span.bounds.left - screenPoint.x, 0, screenPoint.x - span.bounds.right);
+      if (dx < bestDistance) {
+        bestDistance = dx;
+        bestSpan = span;
+      }
+    }
+
+    targetSpan = bestSpan;
+    charOffset = calculateCharOffsetFromScreenX(screenPoint.x, bestSpan);
+  }
+
+  return {
+    span: targetSpan,
+    charOffset,
+    distance: nearestLine.distance,
+    isDirectHit: false,
+    pageIndex: layer.pageIndex,
+  };
+}
+
+/**
+ * Calculate character offset from screen X coordinate within a span.
+ */
+function calculateCharOffsetFromScreenX(x: number, span: TextSpanInfo): number {
+  const bounds = span.bounds;
+  const text = span.text;
+
+  if (text.length === 0) {
+    return span.startOffset;
+  }
+
+  const relativeX = x - bounds.left;
+  const spanWidth = bounds.width;
+
+  if (spanWidth === 0 || relativeX <= 0) {
+    return span.startOffset;
+  }
+  if (relativeX >= spanWidth) {
+    return span.endOffset;
+  }
+
+  // Estimate character position assuming uniform character width
+  const charWidth = spanWidth / text.length;
+  const localOffset = Math.round(relativeX / charWidth);
+
+  return span.startOffset + Math.min(Math.max(0, localOffset), text.length);
 }
 
 /**

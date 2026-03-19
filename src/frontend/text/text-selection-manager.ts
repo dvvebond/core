@@ -528,13 +528,18 @@ export class TextSelectionManager {
    * Update the selection based on current anchor and focus.
    */
   private updateSelection(): void {
-    const { anchor, focus } = this.state;
+    const { anchor, focus, dragState } = this.state;
     if (!anchor || !focus) {
       return;
     }
 
     const anchorPos = anchor.point.textPosition;
-    const focusPos = focus.textPosition;
+    let focusPos = focus.textPosition;
+
+    // When in non-text areas, use the last known text position to maintain selection continuity
+    if (!focusPos && dragState.lastTextPosition) {
+      focusPos = dragState.lastTextPosition;
+    }
 
     if (!anchorPos || !focusPos) {
       // Can't determine selection without text positions
