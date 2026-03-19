@@ -2,12 +2,14 @@ import {
   initializePDFJS,
   createPDFResourceLoader,
   createPDFJSRenderer,
+  createTextSelectionManager,
   createVirtualScroller,
   createViewportManager,
   buildPDFJSTextLayer,
   type PDFDocumentProxy,
   type PDFResourceLoader,
   type PDFJSRenderer,
+  type TextSelectionManager,
   type VirtualScroller,
   type ViewportManager,
   type PageDimensions,
@@ -63,6 +65,7 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
     const rendererRef = useRef<PDFJSRenderer | null>(null);
     const virtualScrollerRef = useRef<VirtualScroller | null>(null);
     const viewportManagerRef = useRef<ViewportManager | null>(null);
+    const textSelectionManagerRef = useRef<TextSelectionManager | null>(null);
     const pageElementsRef = useRef<Map<number, HTMLDivElement>>(new Map());
     const pageDimensionsRef = useRef<Map<number, PageDimensions>>(new Map());
     const pdfBytesRef = useRef<Uint8Array | null>(null);
@@ -98,7 +101,7 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
         }
       };
 
-      init();
+      void init();
 
       return () => {
         mounted = false;
@@ -154,7 +157,7 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
         }
       };
 
-      loadPDF();
+      void loadPDF();
 
       return () => {
         mounted = false;
@@ -218,6 +221,13 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
           container.appendChild(contentContainer);
           contentContainerRef.current = contentContainer;
 
+          const selectionManager = createTextSelectionManager({
+            container: contentContainer,
+            maxTextSearchDistance: 150,
+          });
+          selectionManager.enable();
+          textSelectionManagerRef.current = selectionManager;
+
           // Create renderer
           const renderer = createPDFJSRenderer();
           await renderer.initialize();
@@ -264,6 +274,7 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
             if (scroller) {
               scroller.scrollTo(container.scrollLeft, container.scrollTop);
             }
+            textSelectionManagerRef.current?.updatePositions();
           };
           container.addEventListener("scroll", handleScroll);
 
@@ -340,6 +351,7 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
               });
 
               pageContainer.appendChild(textLayerDiv);
+              textSelectionManagerRef.current?.registerTextLayer(pageIndex, textLayerDiv);
             } catch (err) {
               console.error(`Failed to build text layer for page ${pageIndex}:`, err);
             }
@@ -361,7 +373,7 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
         }
       };
 
-      initViewer();
+      void initViewer();
 
       return () => {
         mounted = false;
@@ -381,6 +393,11 @@ export const SimplePDFViewer = forwardRef<SimplePDFViewerRef, SimplePDFViewerPro
         if (rendererRef.current) {
           // Renderer cleanup if needed
           rendererRef.current = null;
+        }
+
+        if (textSelectionManagerRef.current) {
+          textSelectionManagerRef.current.dispose();
+          textSelectionManagerRef.current = null;
         }
       };
     }, [pdfDocument]);

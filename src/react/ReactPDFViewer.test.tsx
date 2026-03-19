@@ -727,7 +727,7 @@ describe("ReactPDFViewer", () => {
         },
       };
 
-      ref.search.search("test query");
+      void ref.search.search("test query");
       expect(ref.search.search).toHaveBeenCalledWith("test query");
 
       ref.search.findNext();

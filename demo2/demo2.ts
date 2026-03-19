@@ -9,6 +9,7 @@
 import {
   createCanvasRenderer,
   createSearchEngine,
+  createTextSelectionManager,
   createViewportManager,
   createVirtualScroller,
   PDF,
@@ -16,6 +17,7 @@ import {
   type PageDimensions,
   type SearchEngine,
   type SearchResult,
+  type TextSelectionManager,
   type ViewportManager,
   type VirtualScroller,
 } from "../src";
@@ -45,6 +47,7 @@ interface DemoState {
   pageTextSpans: Map<number, TextSpanInfo[]>;
   searchResults: SearchResult[];
   currentSearchIndex: number;
+  textSelectionManager: TextSelectionManager | null;
 }
 
 // Device pixel ratio for high-DPI rendering
@@ -64,6 +67,7 @@ const state: DemoState = {
   pageTextSpans: new Map(),
   searchResults: [],
   currentSearchIndex: -1,
+  textSelectionManager: null,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -177,6 +181,12 @@ async function initializeViewer(): Promise<void> {
   // Store reference to content container for page placement
   (state as any).contentContainer = contentContainer;
 
+  state.textSelectionManager = createTextSelectionManager({
+    container: contentContainer,
+    maxTextSearchDistance: 150,
+  });
+  state.textSelectionManager.enable();
+
   // Handle scroll events to update virtual scroller
   elements.viewer.addEventListener("scroll", handleScroll);
 
@@ -222,13 +232,13 @@ async function initializeViewer(): Promise<void> {
 
       // Get or create the page container
       let container = state.pageElements.get(pageIndex);
-      const contentContainer = (state as any).contentContainer as HTMLElement;
-      if (!container && contentContainer) {
+      const viewerContentContainer = (state as any).contentContainer as HTMLElement;
+      if (!container && viewerContentContainer) {
         container = document.createElement("div");
         container.className = "page-container";
         container.dataset.pageIndex = String(pageIndex);
         state.pageElements.set(pageIndex, container);
-        contentContainer.appendChild(container);
+        viewerContentContainer.appendChild(container);
       }
       if (!container) {
         return;
@@ -307,7 +317,7 @@ async function initializeViewer(): Promise<void> {
         container.appendChild(displayCanvas);
 
         // Build text layer for text selection
-        buildTextLayer(pageIndex, container);
+        void buildTextLayer(pageIndex, container);
 
         // Emit page rendered event
         emitEvent("page:rendered", { pageIndex });
@@ -341,6 +351,7 @@ function handleScroll(): void {
   if (state.virtualScroller) {
     state.virtualScroller.scrollTo(elements.viewer.scrollLeft, elements.viewer.scrollTop);
   }
+  state.textSelectionManager?.updatePositions();
 }
 
 function createPageSource() {
@@ -450,6 +461,7 @@ async function buildTextLayer(pageIndex: number, container: HTMLElement): Promis
 
     state.pageTextSpans.set(pageIndex, textSpans);
     container.appendChild(textLayerDiv);
+    state.textSelectionManager?.registerTextLayer(pageIndex, textLayerDiv);
 
     // Highlight search results on this page
     highlightSearchResults(pageIndex);
@@ -471,6 +483,10 @@ function cleanupViewer(): void {
   if (state.renderer) {
     state.renderer.destroy();
     state.renderer = null;
+  }
+  if (state.textSelectionManager) {
+    state.textSelectionManager.dispose();
+    state.textSelectionManager = null;
   }
   state.searchEngine = null;
   state.pageElements.clear();
@@ -582,6 +598,9 @@ async function setScale(scale: number): Promise<void> {
     }
 
     // Clear existing page elements and text spans, then re-render
+    for (const pageIndex of Array.from(state.pageElements.keys())) {
+      state.textSelectionManager?.unregisterTextLayer(pageIndex);
+    }
     for (const [, container] of state.pageElements) {
       container.remove();
     }

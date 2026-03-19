@@ -176,7 +176,11 @@ export class CCITTFaxFilter implements Filter {
     // Decode rows
     let rowCount = 0;
 
-    while ((rows === 0 || rowCount < rows) && bitPos < data.length * 8) {
+    while (bitPos < data.length * 8) {
+      if (rows !== 0 && rowCount >= rows) {
+        break;
+      }
+
       // Reset current row
       curRow.fill(0);
 

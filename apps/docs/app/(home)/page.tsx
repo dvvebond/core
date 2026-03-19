@@ -379,7 +379,7 @@ function Comparison() {
                 <tr key={row.feature} className="border-b border-border last:border-0">
                   <td className="p-4 font-medium">{row.feature}</td>
                   <td className="p-4 text-center">
-                    <StatusIcon value={row.libpdf} highlight />
+                    <StatusIcon value={row.libpdf} emphasized />
                   </td>
                   <td className="p-4 text-center">
                     <StatusIcon value={row.pdflib} />
@@ -397,11 +397,11 @@ function Comparison() {
   );
 }
 
-function StatusIcon({ value, highlight }: { value: boolean | string; highlight?: boolean }) {
+function StatusIcon({ value, emphasized }: { value: boolean | string; emphasized?: boolean }) {
   if (value === true) {
     return (
       <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-500/10">
-        <Check className={`w-3.5 h-3.5 ${highlight ? "text-green-500" : "text-green-500/70"}`} />
+        <Check className={`w-3.5 h-3.5 ${emphasized ? "text-green-500" : "text-green-500/70"}`} />
       </span>
     );
   }

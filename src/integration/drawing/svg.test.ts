@@ -1074,10 +1074,10 @@ describe("SVG Path Integration", () => {
       // With overlap: each tile (except the first in each direction) starts `overlap` earlier
       // to include the overlap region from the previous tile
 
-      const effectiveTileWidth = printableWidth - overlap;
-      const effectiveTileHeight = printableHeight - overlap;
-      const svgOffsetX = pageCol * effectiveTileWidth;
-      const svgOffsetY = pageRow * effectiveTileHeight;
+      const overlapTileWidth = printableWidth - overlap;
+      const overlapTileHeight = printableHeight - overlap;
+      const svgOffsetX = pageCol * overlapTileWidth;
+      const svgOffsetY = pageRow * overlapTileHeight;
 
       // Position calculation:
       // - Start at the margin (left edge of printable area)

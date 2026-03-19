@@ -58,6 +58,20 @@ export interface NearestTextResult {
   pageIndex: number;
 }
 
+export interface TextLineInfo {
+  spans: TextSpanInfo[];
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+  pageIndex: number;
+}
+
+export interface TextSelectionRange {
+  start: TextPosition;
+  end: TextPosition;
+}
+
 /**
  * Find the nearest text span and character position to a screen point.
  *
@@ -233,19 +247,28 @@ export function createSelectionPointFromScreen(
   options: SpatialPositioningOptions = {},
 ): SelectionPoint {
   const pageIndex = findPageAtPoint(screenPoint, textLayers);
-  let nearestText = findNearestText(screenPoint, textLayers, options);
+  const pageLayer = pageIndex >= 0 ? textLayers.find(l => l.pageIndex === pageIndex) : null;
 
-  const isInText = nearestText?.isDirectHit ?? false;
-  const isInNonTextArea = pageIndex >= 0 && !isInText;
+  let nearestText: NearestTextResult | null = null;
+  let isInText = false;
 
-  // If we're inside a page but didn't find text within the normal search distance,
-  // expand the search to find the nearest line boundary for proper selection extension
-  if (!nearestText && pageIndex >= 0) {
-    const pageLayer = textLayers.find(l => l.pageIndex === pageIndex);
-    if (pageLayer && pageLayer.spans.length > 0) {
-      nearestText = findNearestTextWithLineAwareness(screenPoint, pageLayer);
+  if (pageLayer) {
+    const pageNearestText = findNearestText(screenPoint, [pageLayer], options);
+
+    if (pageNearestText?.isDirectHit) {
+      nearestText = pageNearestText;
+      isInText = true;
+    } else if (pageLayer.spans.length > 0) {
+      nearestText = findNearestTextWithLineAwareness(screenPoint, pageLayer) ?? pageNearestText;
+    } else {
+      nearestText = pageNearestText;
     }
+  } else {
+    nearestText = findNearestText(screenPoint, textLayers, options);
+    isInText = nearestText?.isDirectHit ?? false;
   }
+
+  const isInNonTextArea = pageIndex >= 0 && !isInText;
 
   let textPosition: TextPosition | undefined;
   if (nearestText) {
@@ -285,46 +308,14 @@ function findNearestTextWithLineAwareness(
     return null;
   }
 
-  const lineSpans = nearestLine.spans;
-
-  // Sort line spans by horizontal position
-  const sortedSpans = [...lineSpans].sort((a, b) => a.bounds.left - b.bounds.left);
-  const lineLeft = sortedSpans[0].bounds.left;
-  const lineRight = sortedSpans[sortedSpans.length - 1].bounds.right;
-
-  // Determine position based on horizontal location relative to the line
-  let targetSpan: TextSpanInfo;
-  let charOffset: number;
-
-  if (screenPoint.x < lineLeft) {
-    // Cursor is to the left of the line - snap to line start
-    targetSpan = sortedSpans[0];
-    charOffset = targetSpan.startOffset;
-  } else if (screenPoint.x > lineRight) {
-    // Cursor is to the right of the line - snap to line end
-    targetSpan = sortedSpans[sortedSpans.length - 1];
-    charOffset = targetSpan.endOffset;
-  } else {
-    // Cursor is horizontally within the line bounds
-    // Find the closest span and position within it
-    let bestSpan = sortedSpans[0];
-    let bestDistance = Infinity;
-
-    for (const span of sortedSpans) {
-      const dx = Math.max(span.bounds.left - screenPoint.x, 0, screenPoint.x - span.bounds.right);
-      if (dx < bestDistance) {
-        bestDistance = dx;
-        bestSpan = span;
-      }
-    }
-
-    targetSpan = bestSpan;
-    charOffset = calculateCharOffsetFromScreenX(screenPoint.x, bestSpan);
-  }
+  const lineInfo = buildLineInfo(nearestLine.spans, layer.pageIndex);
+  const textPosition = getTextPositionOnLine(screenPoint, lineInfo);
+  const targetSpan =
+    lineInfo.spans.find(span => span.element === textPosition.element) ?? lineInfo.spans[0];
 
   return {
     span: targetSpan,
-    charOffset,
+    charOffset: textPosition.charOffset,
     distance: nearestLine.distance,
     isDirectHit: false,
     pageIndex: layer.pageIndex,
@@ -549,6 +540,268 @@ export function findNearestLine(
 }
 
 /**
+ * Get the line information for a character offset within a text layer.
+ */
+export function getLineInfoForCharOffset(
+  charOffset: number,
+  layer: TextLayerInfo,
+): TextLineInfo | null {
+  const span =
+    layer.spans.find(textSpan => textSpan.endOffset === charOffset) ??
+    findSpanAtOffset(charOffset, layer.spans) ??
+    layer.spans.find(textSpan => textSpan.startOffset === charOffset) ??
+    null;
+  if (!span) {
+    return null;
+  }
+
+  const lineGroups = groupSpansByLine(layer.spans);
+  for (const lineSpans of lineGroups) {
+    if (lineSpans.includes(span)) {
+      return buildLineInfo(lineSpans, layer.pageIndex);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Get the line information for a concrete text position.
+ *
+ * When an element reference is available, prefer it over the raw character
+ * offset so line-end boundaries remain attached to the line the cursor
+ * actually came from.
+ */
+export function getLineInfoForTextPosition(
+  textPosition: Pick<TextPosition, "charOffset" | "element">,
+  layer: TextLayerInfo,
+): TextLineInfo | null {
+  const span =
+    layer.spans.find(textSpan => textSpan.element === textPosition.element) ??
+    getSpanAtCharBoundary(textPosition.charOffset, layer.spans);
+
+  if (!span) {
+    return null;
+  }
+
+  const lineGroups = groupSpansByLine(layer.spans);
+  for (const lineSpans of lineGroups) {
+    if (lineSpans.includes(span)) {
+      return buildLineInfo(lineSpans, layer.pageIndex);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Get all text lines in top-to-bottom order for a layer.
+ */
+export function getOrderedLineInfos(layer: TextLayerInfo): TextLineInfo[] {
+  return groupSpansByLine(layer.spans).map(lineSpans => buildLineInfo(lineSpans, layer.pageIndex));
+}
+
+/**
+ * Resolve a text position on a specific line based on the cursor x-position.
+ */
+export function getTextPositionOnLine(screenPoint: Point2D, line: TextLineInfo): TextPosition {
+  const sortedSpans = [...line.spans].sort((a, b) => a.bounds.left - b.bounds.left);
+  let targetSpan = sortedSpans[0];
+  let charOffset = targetSpan.startOffset;
+
+  if (screenPoint.x < line.left) {
+    targetSpan = sortedSpans[0];
+    charOffset = targetSpan.startOffset;
+  } else if (screenPoint.x > line.right) {
+    targetSpan = sortedSpans[sortedSpans.length - 1];
+    charOffset = targetSpan.endOffset;
+  } else {
+    let bestSpan = sortedSpans[0];
+    let bestDistance = Infinity;
+
+    for (const span of sortedSpans) {
+      const dx = Math.max(span.bounds.left - screenPoint.x, 0, screenPoint.x - span.bounds.right);
+      if (dx < bestDistance) {
+        bestDistance = dx;
+        bestSpan = span;
+      }
+    }
+
+    targetSpan = bestSpan;
+    charOffset = calculateCharOffsetFromScreenX(screenPoint.x, bestSpan);
+  }
+
+  return {
+    pageIndex: line.pageIndex,
+    charOffset,
+    element: targetSpan.element,
+    elementOffset: Math.max(0, charOffset - targetSpan.startOffset),
+  };
+}
+
+/**
+ * Get the word range that contains the provided text position.
+ *
+ * PDFs do not expose semantic word boundaries, so this is inferred from the
+ * visual line and contiguous non-whitespace tokens within that line.
+ */
+export function getWordRangeForTextPosition(
+  textPosition: TextPosition,
+  layer: TextLayerInfo,
+): TextSelectionRange | null {
+  const lineRange = getLineRangeForTextPosition(textPosition, layer);
+  if (!lineRange) {
+    return null;
+  }
+
+  const lineStart = lineRange.start.charOffset;
+  const lineEnd = lineRange.end.charOffset;
+  if (lineEnd <= lineStart) {
+    return null;
+  }
+
+  const tokenIndex = resolveTokenIndex(layer.fullText, textPosition.charOffset, lineStart, lineEnd);
+  if (tokenIndex === null) {
+    return null;
+  }
+
+  const tokenKind = classifyTokenCharacter(layer.fullText[tokenIndex] ?? "");
+  let startOffset = tokenIndex;
+  let endOffset = tokenIndex + 1;
+
+  while (
+    startOffset > lineStart &&
+    classifyTokenCharacter(layer.fullText[startOffset - 1] ?? "") === tokenKind
+  ) {
+    startOffset--;
+  }
+
+  while (
+    endOffset < lineEnd &&
+    classifyTokenCharacter(layer.fullText[endOffset] ?? "") === tokenKind
+  ) {
+    endOffset++;
+  }
+
+  const start = createTextPositionForOffset(startOffset, layer, "start");
+  const end = createTextPositionForOffset(endOffset, layer, "end");
+  if (!start || !end) {
+    return null;
+  }
+
+  return { start, end };
+}
+
+/**
+ * Get the visual line range that contains the provided text position.
+ */
+export function getLineRangeForTextPosition(
+  textPosition: TextPosition,
+  layer: TextLayerInfo,
+): TextSelectionRange | null {
+  const line = getLineInfoForTextPosition(textPosition, layer);
+  if (!line || line.spans.length === 0) {
+    return null;
+  }
+
+  const sortedSpans = [...line.spans].sort((a, b) => a.startOffset - b.startOffset);
+  const firstSpan = sortedSpans[0];
+  const lastSpan = sortedSpans[sortedSpans.length - 1];
+
+  return {
+    start: {
+      pageIndex: layer.pageIndex,
+      charOffset: firstSpan.startOffset,
+      element: firstSpan.element,
+      elementOffset: 0,
+    },
+    end: {
+      pageIndex: layer.pageIndex,
+      charOffset: lastSpan.endOffset,
+      element: lastSpan.element,
+      elementOffset: lastSpan.text.length,
+    },
+  };
+}
+
+/**
+ * Get the visual paragraph block that contains the provided text position.
+ *
+ * PDF text layers usually do not carry semantic paragraph markup, so this uses
+ * line spacing to infer a contiguous block of lines.
+ */
+export function getParagraphRangeForTextPosition(
+  textPosition: TextPosition,
+  layer: TextLayerInfo,
+): TextSelectionRange | null {
+  const targetLine = getLineInfoForTextPosition(textPosition, layer);
+  if (!targetLine) {
+    return null;
+  }
+
+  const orderedLines = getOrderedLineInfos(layer);
+  const targetLineIndex = orderedLines.findIndex(line =>
+    line.spans.some(span => targetLine.spans.includes(span)),
+  );
+  if (targetLineIndex < 0) {
+    return null;
+  }
+
+  const paragraphBreakThreshold = getParagraphBreakThreshold(orderedLines);
+  let startLineIndex = targetLineIndex;
+  let endLineIndex = targetLineIndex;
+
+  while (
+    startLineIndex > 0 &&
+    getLineGap(orderedLines[startLineIndex - 1], orderedLines[startLineIndex]) <=
+      paragraphBreakThreshold
+  ) {
+    startLineIndex--;
+  }
+
+  while (
+    endLineIndex < orderedLines.length - 1 &&
+    getLineGap(orderedLines[endLineIndex], orderedLines[endLineIndex + 1]) <=
+      paragraphBreakThreshold
+  ) {
+    endLineIndex++;
+  }
+
+  const startLine = orderedLines[startLineIndex];
+  const endLine = orderedLines[endLineIndex];
+  const startRange = getLineRangeForTextPosition(
+    {
+      pageIndex: layer.pageIndex,
+      charOffset: startLine.spans[0].startOffset,
+      element: startLine.spans[0].element,
+      elementOffset: 0,
+    },
+    layer,
+  );
+  const endLineLastSpan = [...endLine.spans].sort((a, b) => a.startOffset - b.startOffset).pop();
+  const endRange = endLineLastSpan
+    ? getLineRangeForTextPosition(
+        {
+          pageIndex: layer.pageIndex,
+          charOffset: endLineLastSpan.endOffset,
+          element: endLineLastSpan.element,
+          elementOffset: endLineLastSpan.text.length,
+        },
+        layer,
+      )
+    : null;
+
+  if (!startRange || !endRange) {
+    return null;
+  }
+
+  return {
+    start: startRange.start,
+    end: endRange.end,
+  };
+}
+
+/**
  * Group spans into lines based on their vertical position.
  */
 function groupSpansByLine(spans: TextSpanInfo[], tolerance = 5): TextSpanInfo[][] {
@@ -556,34 +809,180 @@ function groupSpansByLine(spans: TextSpanInfo[], tolerance = 5): TextSpanInfo[][
     return [];
   }
 
-  // Sort by vertical position
+  // Sort by vertical position and then by horizontal position for stability.
   const sorted = [...spans].sort((a, b) => {
-    const aCenterY = (a.bounds.top + a.bounds.bottom) / 2;
-    const bCenterY = (b.bounds.top + b.bounds.bottom) / 2;
-    return aCenterY - bCenterY;
+    const centerDelta = getSpanCenterY(a) - getSpanCenterY(b);
+    if (centerDelta !== 0) {
+      return centerDelta;
+    }
+
+    return a.bounds.left - b.bounds.left;
   });
 
   const lines: TextSpanInfo[][] = [];
   let currentLine: TextSpanInfo[] = [sorted[0]];
-  let currentLineBottom = sorted[0].bounds.bottom;
+  let currentLineCenterY = getSpanCenterY(sorted[0]);
+  let currentLineHeight = getSpanHeight(sorted[0]);
 
   for (let i = 1; i < sorted.length; i++) {
     const span = sorted[i];
-    const spanTop = span.bounds.top;
+    const spanCenterY = getSpanCenterY(span);
+    const spanHeight = getSpanHeight(span);
+    const verticalThreshold = Math.max(tolerance, Math.min(currentLineHeight, spanHeight) * 0.6);
 
-    // If span overlaps with current line or is within tolerance
-    if (spanTop <= currentLineBottom + tolerance) {
+    // Group spans that share a similar vertical center. This avoids merging
+    // wrapped lines whose bounding boxes overlap slightly in the text layer.
+    if (Math.abs(spanCenterY - currentLineCenterY) <= verticalThreshold) {
       currentLine.push(span);
-      currentLineBottom = Math.max(currentLineBottom, span.bounds.bottom);
+      currentLineCenterY =
+        currentLine.reduce((sum, lineSpan) => sum + getSpanCenterY(lineSpan), 0) /
+        currentLine.length;
+      currentLineHeight = Math.max(currentLineHeight, spanHeight);
     } else {
       lines.push(currentLine);
       currentLine = [span];
-      currentLineBottom = span.bounds.bottom;
+      currentLineCenterY = spanCenterY;
+      currentLineHeight = spanHeight;
     }
   }
 
   lines.push(currentLine);
   return lines;
+}
+
+function buildLineInfo(spans: TextSpanInfo[], pageIndex: number): TextLineInfo {
+  return {
+    spans,
+    top: Math.min(...spans.map(span => span.bounds.top)),
+    bottom: Math.max(...spans.map(span => span.bounds.bottom)),
+    left: Math.min(...spans.map(span => span.bounds.left)),
+    right: Math.max(...spans.map(span => span.bounds.right)),
+    pageIndex,
+  };
+}
+
+function getSpanAtCharBoundary(charOffset: number, spans: TextSpanInfo[]): TextSpanInfo | null {
+  return (
+    spans.find(textSpan => textSpan.endOffset === charOffset) ??
+    findSpanAtOffset(charOffset, spans) ??
+    spans.find(textSpan => textSpan.startOffset === charOffset) ??
+    null
+  );
+}
+
+function getSpanCenterY(span: TextSpanInfo): number {
+  return (span.bounds.top + span.bounds.bottom) / 2;
+}
+
+function getSpanHeight(span: TextSpanInfo): number {
+  return Math.max(1, span.bounds.bottom - span.bounds.top);
+}
+
+function createTextPositionForOffset(
+  charOffset: number,
+  layer: TextLayerInfo,
+  edge: "start" | "end",
+): TextPosition | null {
+  if (layer.spans.length === 0) {
+    return null;
+  }
+
+  const clampedOffset = Math.min(Math.max(0, charOffset), layer.fullText.length);
+  const span =
+    edge === "start"
+      ? (layer.spans.find(textSpan => clampedOffset < textSpan.endOffset) ??
+        layer.spans[layer.spans.length - 1])
+      : (getSpanAtCharBoundary(clampedOffset, layer.spans) ?? layer.spans[layer.spans.length - 1]);
+
+  if (!span) {
+    return null;
+  }
+
+  return {
+    pageIndex: layer.pageIndex,
+    charOffset: clampedOffset,
+    element: span.element,
+    elementOffset: Math.min(span.text.length, Math.max(0, clampedOffset - span.startOffset)),
+  };
+}
+
+function resolveTokenIndex(
+  fullText: string,
+  charOffset: number,
+  lineStart: number,
+  lineEnd: number,
+): number | null {
+  if (lineEnd <= lineStart) {
+    return null;
+  }
+
+  const seen = new Set<number>();
+  const candidates = [charOffset, charOffset - 1, charOffset + 1];
+
+  for (const candidate of candidates) {
+    const clamped = Math.min(lineEnd - 1, Math.max(lineStart, candidate));
+    if (seen.has(clamped)) {
+      continue;
+    }
+    seen.add(clamped);
+
+    const character = fullText[clamped];
+    if (character && classifyTokenCharacter(character) !== "whitespace") {
+      return clamped;
+    }
+  }
+
+  return null;
+}
+
+function classifyTokenCharacter(character: string): "word" | "symbol" | "whitespace" {
+  if (/\s/u.test(character)) {
+    return "whitespace";
+  }
+
+  if (/[\p{L}\p{N}\p{M}_'’-]/u.test(character)) {
+    return "word";
+  }
+
+  return "symbol";
+}
+
+function getParagraphBreakThreshold(lines: TextLineInfo[]): number {
+  if (lines.length <= 1) {
+    return Infinity;
+  }
+
+  const positiveGaps: number[] = [];
+  const lineHeights: number[] = [];
+
+  for (let index = 0; index < lines.length; index++) {
+    lineHeights.push(Math.max(1, lines[index].bottom - lines[index].top));
+
+    if (index < lines.length - 1) {
+      const gap = getLineGap(lines[index], lines[index + 1]);
+      if (gap > 0) {
+        positiveGaps.push(gap);
+      }
+    }
+  }
+
+  const typicalGap = getLowerQuartile(positiveGaps) ?? 0;
+  const typicalHeight = getLowerQuartile(lineHeights) ?? 0;
+
+  return Math.max(typicalGap * 1.8, typicalHeight * 1.25);
+}
+
+function getLineGap(currentLine: TextLineInfo, nextLine: TextLineInfo): number {
+  return Math.max(0, nextLine.top - currentLine.bottom);
+}
+
+function getLowerQuartile(values: number[]): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor((sorted.length - 1) * 0.25)];
 }
 
 /**

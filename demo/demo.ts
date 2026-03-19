@@ -12,6 +12,7 @@ import {
   createPDFJSRenderer,
   createPDFJSSearchEngine,
   createPDFResourceLoader,
+  createTextSelectionManager,
   createViewportAwareBoundingBoxOverlay,
   createVirtualScroller,
   createViewportManager,
@@ -22,6 +23,7 @@ import {
   type PDFDocumentProxy,
   type PDFJSSearchEngine,
   type PDFResourceLoader,
+  type TextSelectionManager,
   type ViewportAwareBoundingBoxOverlay,
   type ViewportBounds,
   type ViewportManager,
@@ -53,6 +55,7 @@ interface DemoState {
   pageTextSpans: Map<number, TextSpanInfo[]>;
   boundingBoxOverlay: ViewportAwareBoundingBoxOverlay | null;
   boundingBoxControls: BoundingBoxControls | null;
+  textSelectionManager: TextSelectionManager | null;
   pageDimensions: Map<number, { width: number; height: number }>;
   searchHighlightOverlays: Map<number, HTMLElement>;
 }
@@ -71,6 +74,7 @@ const state: DemoState = {
   pageTextSpans: new Map(),
   boundingBoxOverlay: null,
   boundingBoxControls: null,
+  textSelectionManager: null,
   pageDimensions: new Map(),
   searchHighlightOverlays: new Map(),
 };
@@ -261,11 +265,18 @@ async function initializeViewer(): Promise<void> {
   // Store reference to content container for page placement
   (state as any).contentContainer = contentContainer;
 
+  state.textSelectionManager = createTextSelectionManager({
+    container: contentContainer,
+    maxTextSearchDistance: 150,
+  });
+  state.textSelectionManager.enable();
+
   // Handle scroll events to update virtual scroller
   elements.viewer.addEventListener("scroll", () => {
     if (state.virtualScroller) {
       state.virtualScroller.scrollTo(elements.viewer.scrollLeft, elements.viewer.scrollTop);
     }
+    state.textSelectionManager?.updatePositions();
   });
 
   // Create PDF.js renderer for viewport manager
@@ -311,13 +322,13 @@ async function initializeViewer(): Promise<void> {
 
       // Get or create the page container
       let container = state.pageElements.get(event.pageIndex);
-      const contentContainer = (state as any).contentContainer as HTMLElement;
-      if (!container && contentContainer) {
+      const viewerContentContainer = (state as any).contentContainer as HTMLElement;
+      if (!container && viewerContentContainer) {
         container = document.createElement("div");
         container.className = "page-container";
         container.dataset.pageIndex = String(event.pageIndex);
         state.pageElements.set(event.pageIndex, container);
-        contentContainer.appendChild(container);
+        viewerContentContainer.appendChild(container);
       }
       if (!container) {
         return;
@@ -372,6 +383,7 @@ async function initializeViewer(): Promise<void> {
           state.pageTextSpans.set(pageIndex, result.textSpans);
 
           container.appendChild(textLayerDiv);
+          state.textSelectionManager?.registerTextLayer(pageIndex, textLayerDiv);
 
           // Highlight search results on this page
           highlightSearchResults(pageIndex);
@@ -499,6 +511,10 @@ function cleanupViewer(): void {
     state.boundingBoxOverlay.removeAllOverlays();
     state.boundingBoxOverlay.clearAllBoundingBoxes();
   }
+  if (state.textSelectionManager) {
+    state.textSelectionManager.dispose();
+    state.textSelectionManager = null;
+  }
   // Clean up search highlight overlays
   clearAllSearchHighlightOverlays();
   state.pageElements.clear();
@@ -616,6 +632,9 @@ async function setScale(scale: number): Promise<void> {
     }
 
     // Clear existing page elements and text spans, then re-render
+    for (const pageIndex of Array.from(state.pageElements.keys())) {
+      state.textSelectionManager?.unregisterTextLayer(pageIndex);
+    }
     for (const [, container] of state.pageElements) {
       container.remove();
     }
@@ -709,7 +728,7 @@ function initializeSearch(): void {
   state.searchEngine.addListener(searchState => {
     updateSearchResults();
     if (!searchState.searching && searchState.results.length > 0) {
-      scrollToCurrentResult();
+      void scrollToCurrentResult();
     }
   });
 }

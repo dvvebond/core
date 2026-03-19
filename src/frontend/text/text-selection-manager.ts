@@ -41,8 +41,14 @@ import {
 import {
   collectTextLayerInfo,
   createSelectionPointFromScreen,
-  findNearestText,
+  getLineRangeForTextPosition,
+  getOrderedLineInfos,
+  getLineInfoForTextPosition,
+  getParagraphRangeForTextPosition,
+  getTextPositionOnLine,
+  getWordRangeForTextPosition,
   refreshSpanBounds,
+  type TextSelectionRange,
 } from "./spatial-positioning";
 
 /**
@@ -93,6 +99,8 @@ const DEFAULT_OPTIONS: Required<
   debounceInterval: 16,
 };
 
+type SelectionGranularity = "character" | "word" | "line" | "paragraph";
+
 /**
  * TextSelectionManager handles text selection across PDF pages.
  *
@@ -132,6 +140,8 @@ export class TextSelectionManager {
   private enabled = false;
   private isIntercepting = false;
   private debounceTimeout: ReturnType<typeof setTimeout> | null = null;
+  private selectionGranularity: SelectionGranularity = "character";
+  private granularAnchorRange: TextSelectionRange | null = null;
 
   // Bound event handlers
   private readonly boundMouseDown: (e: MouseEvent) => void;
@@ -252,6 +262,8 @@ export class TextSelectionManager {
     const previousText = this.state.selectedText;
 
     this.state = createInitialSelectionState();
+    this.selectionGranularity = "character";
+    this.granularAnchorRange = null;
     this.renderer?.clear();
     this.renderer?.deactivate();
     this.isIntercepting = false;
@@ -351,22 +363,30 @@ export class TextSelectionManager {
 
     const screenPoint = this.getScreenPoint(event);
     const textLayers = this.collectTextLayers();
+    const granularity = this.getGranularityForClickCount(event.detail);
     const selectionPoint = createSelectionPointFromScreen(screenPoint, textLayers, {
       maxSearchDistance: this.options.maxTextSearchDistance,
     });
 
-    // Check if click is in a text layer
-    if (selectionPoint.pageIndex < 0) {
+    // Clicking blank space should clear any existing selection instead of
+    // snapping to nearby text and starting a new drag.
+    if (selectionPoint.pageIndex < 0 || !selectionPoint.isInText || !selectionPoint.textPosition) {
+      this.clearSelection();
       return;
     }
 
-    // Start intercepting if we're in or near text
-    const nearestText = findNearestText(screenPoint, textLayers, {
-      maxSearchDistance: this.options.maxTextSearchDistance,
-    });
+    if (this.state.hasSelection) {
+      this.clearSelection();
+    }
 
-    if (!nearestText) {
-      return;
+    this.selectionGranularity = granularity;
+    this.granularAnchorRange =
+      granularity === "character" || !selectionPoint.textPosition
+        ? null
+        : this.resolveGranularRange(selectionPoint.textPosition, granularity, textLayers);
+
+    if (granularity !== "character" && !this.granularAnchorRange) {
+      this.selectionGranularity = "character";
     }
 
     // Start drag
@@ -387,6 +407,10 @@ export class TextSelectionManager {
 
     // Activate custom renderer
     this.renderer?.activate();
+
+    if (this.selectionGranularity !== "character") {
+      this.updateSelection();
+    }
 
     this.emitEvent("drag-start", {
       anchor,
@@ -414,9 +438,11 @@ export class TextSelectionManager {
 
     const screenPoint = this.getScreenPoint(event);
     const textLayers = this.collectTextLayers();
-    const selectionPoint = createSelectionPointFromScreen(screenPoint, textLayers, {
+    let selectionPoint = createSelectionPointFromScreen(screenPoint, textLayers, {
       maxSearchDistance: this.options.maxTextSearchDistance,
     });
+
+    selectionPoint = this.stabilizeNonTextSelectionPoint(selectionPoint, textLayers);
 
     // Track non-text crossings
     const wasInText = this.state.focus?.isInText ?? false;
@@ -518,6 +544,126 @@ export class TextSelectionManager {
   }
 
   /**
+   * Keep non-text drags pinned to the last confirmed text position when
+   * heuristic blank-area resolution would move the selection backwards.
+   */
+  private stabilizeNonTextSelectionPoint(
+    selectionPoint: SelectionPoint,
+    textLayers: TextLayerInfo[],
+  ): SelectionPoint {
+    if (!selectionPoint.isInNonTextArea || !selectionPoint.textPosition) {
+      return selectionPoint;
+    }
+
+    const lastTextPosition = this.state.dragState.lastTextPosition;
+    const anchorPosition = this.state.anchor?.point.textPosition;
+    if (!lastTextPosition || !anchorPosition) {
+      return selectionPoint;
+    }
+
+    const gapPinnedPoint = this.resolveGapPinnedSelectionPoint(
+      selectionPoint,
+      lastTextPosition,
+      textLayers,
+    );
+    if (gapPinnedPoint) {
+      return gapPinnedPoint;
+    }
+
+    const establishedDirection = compareTextPositions(lastTextPosition, anchorPosition);
+    if (establishedDirection === 0) {
+      return selectionPoint;
+    }
+
+    const candidateDelta = compareTextPositions(selectionPoint.textPosition, lastTextPosition);
+    const movesBackward =
+      (establishedDirection > 0 && candidateDelta < 0) ||
+      (establishedDirection < 0 && candidateDelta > 0);
+
+    if (!movesBackward) {
+      return selectionPoint;
+    }
+
+    return this.pinSelectionPointToTextPosition(selectionPoint, lastTextPosition);
+  }
+
+  /**
+   * In the empty gap between two lines, keep the selection on the most recent
+   * line the cursor actually touched. A different line only becomes active once
+   * the cursor enters that line's text bounds.
+   */
+  private resolveGapPinnedSelectionPoint(
+    selectionPoint: SelectionPoint,
+    referencePosition: TextPosition,
+    textLayers: TextLayerInfo[],
+  ): SelectionPoint | null {
+    if (
+      !selectionPoint.textPosition ||
+      selectionPoint.textPosition.pageIndex !== referencePosition.pageIndex
+    ) {
+      return null;
+    }
+
+    const layer = textLayers.find(textLayer => textLayer.pageIndex === referencePosition.pageIndex);
+    if (!layer) {
+      return null;
+    }
+
+    const referenceLine = getLineInfoForTextPosition(referencePosition, layer);
+    const candidateLine = getLineInfoForTextPosition(selectionPoint.textPosition, layer);
+    if (!referenceLine || !candidateLine) {
+      return null;
+    }
+
+    const orderedLines = getOrderedLineInfos(layer);
+    const referenceIndex = orderedLines.findIndex(line =>
+      line.spans.some(span => referenceLine.spans.includes(span)),
+    );
+    const candidateIndex = orderedLines.findIndex(line =>
+      line.spans.some(span => candidateLine.spans.includes(span)),
+    );
+
+    if (referenceIndex < 0 || candidateIndex < 0 || referenceIndex === candidateIndex) {
+      return null;
+    }
+
+    let targetLineIndex: number | null = null;
+
+    if (referenceIndex < candidateIndex && selectionPoint.screen.y < candidateLine.top) {
+      targetLineIndex = candidateIndex - 1;
+    }
+
+    if (referenceIndex > candidateIndex && selectionPoint.screen.y > candidateLine.bottom) {
+      targetLineIndex = candidateIndex + 1;
+    }
+
+    if (targetLineIndex === null) {
+      return null;
+    }
+
+    const targetLine = orderedLines[targetLineIndex];
+    if (!targetLine) {
+      return null;
+    }
+
+    return this.pinSelectionPointToTextPosition(
+      selectionPoint,
+      getTextPositionOnLine(selectionPoint.screen, targetLine),
+    );
+  }
+
+  private pinSelectionPointToTextPosition(
+    selectionPoint: SelectionPoint,
+    textPosition: TextPosition,
+  ): SelectionPoint {
+    return {
+      ...selectionPoint,
+      pageIndex: textPosition.pageIndex,
+      textPosition,
+    };
+  }
+
+  /**
    * Collect text layer information from registered containers.
    */
   private collectTextLayers(): TextLayerInfo[] {
@@ -549,55 +695,19 @@ export class TextSelectionManager {
       return;
     }
 
-    // Get ordered positions
-    const { start, end } = getOrderedPositions(anchorPos, focusPos);
-
-    // Build page ranges
-    const pageRanges: PageSelectionRange[] = [];
     const textLayers = this.collectTextLayers();
-
-    if (start.pageIndex === end.pageIndex) {
-      // Single page selection
-      pageRanges.push({
-        pageIndex: start.pageIndex,
-        startOffset: start.charOffset,
-        endOffset: end.charOffset,
-      });
-    } else {
-      // Multi-page selection
-      this.state.isMultiPage = true;
-
-      // First page: from start to end of page
-      const firstLayer = textLayers.find(l => l.pageIndex === start.pageIndex);
-      if (firstLayer) {
-        pageRanges.push({
-          pageIndex: start.pageIndex,
-          startOffset: start.charOffset,
-          endOffset: firstLayer.fullText.length,
-        });
-      }
-
-      // Middle pages: entire page
-      for (const layer of textLayers) {
-        if (layer.pageIndex > start.pageIndex && layer.pageIndex < end.pageIndex) {
-          pageRanges.push({
-            pageIndex: layer.pageIndex,
-            startOffset: 0,
-            endOffset: layer.fullText.length,
-          });
-        }
-      }
-
-      // Last page: from start of page to end
-      pageRanges.push({
-        pageIndex: end.pageIndex,
-        startOffset: 0,
-        endOffset: end.charOffset,
-      });
+    const selectionRange = this.resolveSelectionRange(anchorPos, focusPos, textLayers);
+    if (!selectionRange) {
+      this.state.hasSelection = false;
+      this.state.pageRanges = [];
+      this.state.selectedText = "";
+      return;
     }
 
+    const pageRanges = this.buildPageRanges(selectionRange.start, selectionRange.end, textLayers);
     this.state.pageRanges = pageRanges;
     this.state.hasSelection = pageRanges.length > 0;
+    this.state.isMultiPage = pageRanges.length > 1;
 
     // Extract selected text
     this.state.selectedText = this.extractSelectedText(pageRanges, textLayers);
@@ -626,68 +736,239 @@ export class TextSelectionManager {
     return parts.join("\n");
   }
 
+  private getGranularityForClickCount(clickCount: number): SelectionGranularity {
+    if (clickCount >= 4) {
+      return "paragraph";
+    }
+
+    if (clickCount === 3) {
+      return "line";
+    }
+
+    if (clickCount === 2) {
+      return "word";
+    }
+
+    return "character";
+  }
+
+  private resolveSelectionRange(
+    anchorPosition: TextPosition,
+    focusPosition: TextPosition,
+    textLayers: TextLayerInfo[],
+  ): TextSelectionRange | null {
+    if (this.selectionGranularity === "character" || !this.granularAnchorRange) {
+      const { start, end } = getOrderedPositions(anchorPosition, focusPosition);
+      return { start, end };
+    }
+
+    if (compareTextPositions(focusPosition, this.granularAnchorRange.start) < 0) {
+      const focusRange = this.resolveGranularRange(
+        focusPosition,
+        this.selectionGranularity,
+        textLayers,
+      ) ?? {
+        start: focusPosition,
+        end: focusPosition,
+      };
+
+      return {
+        start: focusRange.start,
+        end: this.granularAnchorRange.end,
+      };
+    }
+
+    if (compareTextPositions(focusPosition, this.granularAnchorRange.end) > 0) {
+      const focusRange = this.resolveGranularRange(
+        focusPosition,
+        this.selectionGranularity,
+        textLayers,
+      ) ?? {
+        start: focusPosition,
+        end: focusPosition,
+      };
+
+      return {
+        start: this.granularAnchorRange.start,
+        end: focusRange.end,
+      };
+    }
+
+    return this.granularAnchorRange;
+  }
+
+  private buildPageRanges(
+    start: TextPosition,
+    end: TextPosition,
+    textLayers: TextLayerInfo[],
+  ): PageSelectionRange[] {
+    const pageRanges: PageSelectionRange[] = [];
+
+    if (start.pageIndex === end.pageIndex) {
+      pageRanges.push({
+        pageIndex: start.pageIndex,
+        startOffset: start.charOffset,
+        endOffset: end.charOffset,
+      });
+      return pageRanges;
+    }
+
+    const firstLayer = textLayers.find(layer => layer.pageIndex === start.pageIndex);
+    if (firstLayer) {
+      pageRanges.push({
+        pageIndex: start.pageIndex,
+        startOffset: start.charOffset,
+        endOffset: firstLayer.fullText.length,
+      });
+    }
+
+    for (const layer of textLayers) {
+      if (layer.pageIndex > start.pageIndex && layer.pageIndex < end.pageIndex) {
+        pageRanges.push({
+          pageIndex: layer.pageIndex,
+          startOffset: 0,
+          endOffset: layer.fullText.length,
+        });
+      }
+    }
+
+    pageRanges.push({
+      pageIndex: end.pageIndex,
+      startOffset: 0,
+      endOffset: end.charOffset,
+    });
+
+    return pageRanges;
+  }
+
+  private resolveGranularRange(
+    textPosition: TextPosition,
+    granularity: Exclude<SelectionGranularity, "character">,
+    textLayers: TextLayerInfo[],
+  ): TextSelectionRange | null {
+    const layer = textLayers.find(textLayer => textLayer.pageIndex === textPosition.pageIndex);
+    if (!layer) {
+      return null;
+    }
+
+    if (granularity === "word") {
+      return getWordRangeForTextPosition(textPosition, layer);
+    }
+
+    if (granularity === "line") {
+      return getLineRangeForTextPosition(textPosition, layer);
+    }
+
+    return getParagraphRangeForTextPosition(textPosition, layer);
+  }
+
   /**
    * Apply the final selection to the browser.
    */
   private applyFinalSelection(): void {
     const textLayers = this.collectTextLayers();
+    let createdNativeSelection = false;
 
-    // Try to create a native browser selection if possible
-    if (this.state.pageRanges.length === 1) {
-      const range = this.state.pageRanges[0];
-      const layer = textLayers.find(l => l.pageIndex === range.pageIndex);
-
-      if (layer) {
-        this.createNativeSelection(range, layer);
-      }
+    if (this.state.pageRanges.length > 0) {
+      createdNativeSelection = this.createNativeSelection(this.state.pageRanges, textLayers);
     }
 
-    // Keep custom rendering for multi-page or complex selections
+    if (createdNativeSelection) {
+      this.renderer?.deactivate();
+    }
+
+    // Keep custom rendering only when native DOM selection could not be created.
     this.state.lastUpdated = Date.now();
   }
 
   /**
-   * Try to create a native browser selection for a single page range.
+   * Try to create a native browser selection across the current page ranges.
    */
-  private createNativeSelection(range: PageSelectionRange, layer: TextLayerInfo): void {
+  private createNativeSelection(
+    ranges: PageSelectionRange[],
+    textLayers: TextLayerInfo[],
+  ): boolean {
     const selection = window.getSelection();
     if (!selection) {
-      return;
+      return false;
     }
 
-    // Find start and end nodes
-    let startNode: Node | null = null;
-    let startOffset = 0;
-    let endNode: Node | null = null;
-    let endOffset = 0;
-
-    for (const span of layer.spans) {
-      // Find start
-      if (!startNode && span.endOffset > range.startOffset) {
-        startNode = span.element.firstChild;
-        startOffset = Math.max(0, range.startOffset - span.startOffset);
-      }
-
-      // Find end
-      if (span.endOffset >= range.endOffset) {
-        endNode = span.element.firstChild;
-        endOffset = Math.min(span.text.length, range.endOffset - span.startOffset);
-        break;
-      }
+    const startRange = ranges[0];
+    const endRange = ranges[ranges.length - 1];
+    if (!startRange || !endRange) {
+      return false;
     }
 
-    if (startNode && endNode) {
-      try {
-        const domRange = document.createRange();
-        domRange.setStart(startNode, startOffset);
-        domRange.setEnd(endNode, endOffset);
-
-        selection.removeAllRanges();
-        selection.addRange(domRange);
-      } catch {
-        // Native selection failed, keep custom rendering
-      }
+    const startLayer = textLayers.find(layer => layer.pageIndex === startRange.pageIndex);
+    const endLayer = textLayers.find(layer => layer.pageIndex === endRange.pageIndex);
+    if (!startLayer || !endLayer) {
+      return false;
     }
+
+    const startBoundary = this.resolveNativeSelectionBoundary(
+      startRange.startOffset,
+      startLayer,
+      "start",
+    );
+    const endBoundary = this.resolveNativeSelectionBoundary(endRange.endOffset, endLayer, "end");
+
+    if (!startBoundary || !endBoundary) {
+      return false;
+    }
+
+    try {
+      const domRange = document.createRange();
+      domRange.setStart(startBoundary.node, startBoundary.offset);
+      domRange.setEnd(endBoundary.node, endBoundary.offset);
+
+      selection.removeAllRanges();
+      selection.addRange(domRange);
+      return true;
+    } catch {
+      // Native selection failed, keep custom rendering
+      return false;
+    }
+  }
+
+  /**
+   * Resolve a DOM text node and offset for a page-relative character offset.
+   */
+  private resolveNativeSelectionBoundary(
+    targetOffset: number,
+    layer: TextLayerInfo,
+    edge: "start" | "end",
+  ): { node: Node; offset: number } | null {
+    if (layer.spans.length === 0) {
+      return null;
+    }
+
+    const spans = layer.spans;
+    const lastSpan = spans[spans.length - 1];
+
+    for (const span of spans) {
+      const matchesStart = edge === "start" && targetOffset < span.endOffset;
+      const matchesEnd = edge === "end" && targetOffset <= span.endOffset;
+      const matchesFinalEnd =
+        edge === "end" && span === lastSpan && targetOffset === lastSpan.endOffset;
+
+      if (!matchesStart && !matchesEnd && !matchesFinalEnd) {
+        continue;
+      }
+
+      const node = span.element.firstChild;
+      if (!node) {
+        return null;
+      }
+
+      const localOffset = Math.min(span.text.length, Math.max(0, targetOffset - span.startOffset));
+
+      return {
+        node,
+        offset: localOffset,
+      };
+    }
+
+    return null;
   }
 
   /**

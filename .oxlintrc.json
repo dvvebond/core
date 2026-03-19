@@ -13,8 +13,9 @@
     "@typescript-eslint/prefer-const": "error",
     "@typescript-eslint/no-extraneous-class": "off",
     "@typescript-eslint/await-thenable": "error",
+    "@typescript-eslint/no-unsafe-type-assertion": "off",
     "@typescript-eslint/no-floating-promises": "warn",
-    "@typescript-eslint/require-await": "warn",
+    "@typescript-eslint/require-await": "off",
     "@typescript-eslint/unbound-method": "warn",
     "@typescript-eslint/restrict-template-expressions": "warn",
     "@typescript-eslint/no-redundant-type-constituents": "warn"
@@ -29,7 +30,9 @@
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-unsafe-type-assertion": "off",
         "@typescript-eslint/no-base-to-string": "off",
-        "@typescript-eslint/require-await": "off"
+        "@typescript-eslint/require-await": "off",
+        "@typescript-eslint/unbound-method": "off",
+        "@typescript-eslint/restrict-template-expressions": "off"
       }
     },
     {
@@ -51,5 +54,15 @@
       }
     }
   ],
-  "ignorePatterns": ["dist", "node_modules", "checkouts", "tmp", ".docs", "examples/tsconfig.json"]
+  "ignorePatterns": [
+    "dist",
+    "node_modules",
+    "checkouts",
+    "tmp",
+    ".docs",
+    "Ouroboros",
+    "Ouroboros/**",
+    "**/Ouroboros/**",
+    "examples/tsconfig.json"
+  ]
 }

@@ -280,7 +280,7 @@ describe("SearchEngine viewer integration", () => {
         engine.addEventListener("search-complete", event => {
           resolve(event as SearchCompleteEvent);
         });
-        engine.search("fox");
+        void engine.search("fox");
       });
 
       expect(completeEvent.totalResults).toBe(2);

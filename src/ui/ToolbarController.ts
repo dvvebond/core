@@ -29,6 +29,8 @@ export type ToolbarButtonId =
   | "rotate-cw"
   | "rotate-ccw";
 
+export type ToolbarActionId = ToolbarButtonId | (string & {});
+
 /**
  * Event types emitted by ToolbarController.
  */
@@ -46,7 +48,7 @@ export interface ToolbarEvent {
   /**
    * Button that triggered the event.
    */
-  buttonId: ToolbarButtonId | string;
+  buttonId: ToolbarActionId;
 
   /**
    * Additional data for the event.
@@ -314,7 +316,7 @@ export class ToolbarController {
    *
    * @param buttonId - The action to execute
    */
-  executeAction(buttonId: ToolbarButtonId | string): void {
+  executeAction(buttonId: ToolbarActionId): void {
     if (this._disposed) {
       return;
     }

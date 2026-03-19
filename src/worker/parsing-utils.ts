@@ -6,7 +6,7 @@
 
 // Declare browser globals for type checking
 declare const window: typeof globalThis | undefined;
-declare const document: unknown | undefined;
+declare const document: unknown;
 declare const self: (typeof globalThis & { importScripts?: unknown }) | undefined;
 declare const Worker: new (url: string | URL, options?: WorkerOptions) => Worker;
 declare const MessagePort: new () => MessagePort;

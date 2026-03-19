@@ -457,7 +457,7 @@ describe("ViewportManager", () => {
       await manager.initialize();
 
       // Start render but don't await
-      manager.renderPage(0);
+      void manager.renderPage(0);
 
       // Give it a tick to start
       await new Promise(resolve => setTimeout(resolve, 5));
@@ -480,9 +480,9 @@ describe("ViewportManager", () => {
       await manager.initialize();
 
       // Start multiple renders
-      manager.renderPage(0);
-      manager.renderPage(1);
-      manager.renderPage(2);
+      void manager.renderPage(0);
+      void manager.renderPage(1);
+      void manager.renderPage(2);
 
       // Cancel all
       manager.cancelAllRenders();
@@ -624,8 +624,8 @@ describe("ViewportManager", () => {
       await manager.initialize();
 
       // Queue multiple renders
-      manager.renderPage(0);
-      manager.renderPage(1);
+      void manager.renderPage(0);
+      void manager.renderPage(1);
 
       // Wait for all to process
       await new Promise(resolve => setTimeout(resolve, 50));
@@ -653,7 +653,7 @@ describe("ViewportManager", () => {
 
       // Start many renders
       for (let i = 0; i < 5; i++) {
-        manager.renderPage(i);
+        void manager.renderPage(i);
       }
 
       // Give renders a moment to start

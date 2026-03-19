@@ -1464,12 +1464,12 @@ export class CanvasRenderer implements TypeAwareRenderer {
 
       // Scale factor to make the browser glyph match the PDF width
       // This ensures characters don't overlap or have gaps
-      const scaleX = measuredWidth > 0 ? pdfCharWidth / measuredWidth : 1;
+      const glyphScaleX = measuredWidth > 0 ? pdfCharWidth / measuredWidth : 1;
 
       // Apply scale transform for this character, render, then restore
       this._context.save();
       this._context.translate(canvasXOffset, 0);
-      this._context.scale(scaleX, 1);
+      this._context.scale(glyphScaleX, 1);
 
       if (textRenderMode === TextRenderMode.Fill || textRenderMode === TextRenderMode.FillStroke) {
         this._context.fillText(unicode, 0, adjustedY);
@@ -2012,7 +2012,9 @@ export class CanvasRenderer implements TypeAwareRenderer {
 
     return {
       promise: enhancedPromise,
-      cancel: task.cancel,
+      cancel: () => {
+        task.cancel();
+      },
       get cancelled() {
         return task.cancelled;
       },
