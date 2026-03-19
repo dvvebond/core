@@ -100,6 +100,11 @@ const DEFAULT_OPTIONS: Required<
 };
 
 type SelectionGranularity = "character" | "word" | "line" | "paragraph";
+const TEXT_SELECTION_MANAGER_KEY = "__dvvebondTextSelectionManager";
+
+interface SelectionManagedContainer extends HTMLElement {
+  [TEXT_SELECTION_MANAGER_KEY]?: TextSelectionManager;
+}
 
 /**
  * TextSelectionManager handles text selection across PDF pages.
@@ -181,6 +186,7 @@ export class TextSelectionManager {
       return;
     }
     this.enabled = true;
+    this.attachToContainer();
 
     // Add event listeners to container
     this.container.addEventListener("mousedown", this.boundMouseDown, true);
@@ -200,6 +206,7 @@ export class TextSelectionManager {
       return;
     }
     this.enabled = false;
+    this.detachFromContainer();
 
     // Remove event listeners
     this.container.removeEventListener("mousedown", this.boundMouseDown, true);
@@ -1008,6 +1015,17 @@ export class TextSelectionManager {
       }
     }
   }
+
+  private attachToContainer(): void {
+    (this.container as SelectionManagedContainer)[TEXT_SELECTION_MANAGER_KEY] = this;
+  }
+
+  private detachFromContainer(): void {
+    const container = this.container as SelectionManagedContainer;
+    if (container[TEXT_SELECTION_MANAGER_KEY] === this) {
+      delete container[TEXT_SELECTION_MANAGER_KEY];
+    }
+  }
 }
 
 /**
@@ -1020,4 +1038,10 @@ export function createTextSelectionManager(
   options: TextSelectionManagerOptions,
 ): TextSelectionManager {
   return new TextSelectionManager(options);
+}
+
+export function getAttachedTextSelectionManager(
+  container: HTMLElement,
+): TextSelectionManager | null {
+  return (container as SelectionManagedContainer)[TEXT_SELECTION_MANAGER_KEY] ?? null;
 }

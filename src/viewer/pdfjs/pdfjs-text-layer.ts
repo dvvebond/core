@@ -17,6 +17,11 @@
  * ```
  */
 
+import {
+  createTextSelectionManager,
+  getAttachedTextSelectionManager,
+  type TextSelectionManager,
+} from "../../frontend/text/text-selection-manager";
 import type {
   PageViewport,
   PDFPageProxy,
@@ -25,6 +30,12 @@ import type {
   TextMarkedContent,
 } from "./pdfjs-wrapper";
 import { getTextContent, isTextItem } from "./pdfjs-wrapper";
+
+const AUTO_SELECTION_ROOT_SELECTOR = "[data-pdf-selection-root], .react-pdf__Document";
+const PAGE_NUMBER_SELECTOR = "[data-page-number]";
+const autoSelectionManagers = new WeakMap<HTMLElement, TextSelectionManager>();
+const trackedAutoSelectionRoots = new Set<HTMLElement>();
+let autoSelectionCleanupObserver: MutationObserver | null = null;
 
 /**
  * Options for building the text layer.
@@ -51,6 +62,22 @@ export interface PDFJSTextLayerOptions {
    * Used when integrating with TextSelectionManager.
    */
   pageIndex?: number;
+
+  /**
+   * Root container that should own the shared text selection manager.
+   *
+   * When omitted, the builder will auto-detect common viewer roots such as
+   * `.react-pdf__Document`.
+   */
+  selectionContainer?: HTMLElement;
+
+  /**
+   * Whether to automatically connect built text layers to the robust custom
+   * text selection manager.
+   *
+   * @default true
+   */
+  enableCustomTextSelection?: boolean;
 }
 
 /**
@@ -109,7 +136,14 @@ export async function buildPDFJSTextLayer(
   page: PDFPageProxy,
   options: PDFJSTextLayerOptions,
 ): Promise<PDFJSTextLayerResult> {
-  const { container, viewport, enhanceTextAccessibility = true, pageIndex } = options;
+  const {
+    container,
+    viewport,
+    enhanceTextAccessibility = true,
+    pageIndex,
+    selectionContainer,
+    enableCustomTextSelection = true,
+  } = options;
 
   // Clear existing content
   while (container.firstChild) {
@@ -177,6 +211,13 @@ export async function buildPDFJSTextLayer(
 
   // Build full text for text extraction/selection
   const fullText = textSpans.map(span => span.text).join("");
+
+  maybeRegisterTextLayerWithSelectionManager({
+    textLayerContainer: container,
+    pageIndex,
+    selectionContainer,
+    enableCustomTextSelection,
+  });
 
   return {
     divCount,
@@ -338,6 +379,8 @@ export class PDFJSTextLayerBuilder {
   private readonly _viewport: PageViewport;
   private readonly _enhanceAccessibility: boolean;
   private readonly _pageIndex?: number;
+  private readonly _selectionContainer?: HTMLElement;
+  private readonly _enableCustomTextSelection: boolean;
   private _lastResult: PDFJSTextLayerResult | null = null;
 
   constructor(options: PDFJSTextLayerOptions) {
@@ -345,6 +388,8 @@ export class PDFJSTextLayerBuilder {
     this._viewport = options.viewport;
     this._enhanceAccessibility = options.enhanceTextAccessibility ?? true;
     this._pageIndex = options.pageIndex;
+    this._selectionContainer = options.selectionContainer;
+    this._enableCustomTextSelection = options.enableCustomTextSelection ?? true;
   }
 
   /**
@@ -356,6 +401,8 @@ export class PDFJSTextLayerBuilder {
       viewport: this._viewport,
       enhanceTextAccessibility: this._enhanceAccessibility,
       pageIndex: this._pageIndex,
+      selectionContainer: this._selectionContainer,
+      enableCustomTextSelection: this._enableCustomTextSelection,
     });
     return this._lastResult;
   }
@@ -412,4 +459,108 @@ export class PDFJSTextLayerBuilder {
  */
 export function createPDFJSTextLayerBuilder(options: PDFJSTextLayerOptions): PDFJSTextLayerBuilder {
   return new PDFJSTextLayerBuilder(options);
+}
+
+interface TextSelectionRegistrationOptions {
+  textLayerContainer: HTMLElement;
+  pageIndex?: number;
+  selectionContainer?: HTMLElement;
+  enableCustomTextSelection: boolean;
+}
+
+function maybeRegisterTextLayerWithSelectionManager(
+  options: TextSelectionRegistrationOptions,
+): void {
+  if (!options.enableCustomTextSelection) {
+    return;
+  }
+
+  const selectionRoot =
+    options.selectionContainer ?? resolveSelectionRoot(options.textLayerContainer);
+  const pageIndex = resolveSelectionPageIndex(options.textLayerContainer, options.pageIndex);
+
+  if (!selectionRoot || pageIndex === null) {
+    return;
+  }
+
+  const manager = getOrCreateTextSelectionManager(selectionRoot);
+  manager.registerTextLayer(pageIndex, options.textLayerContainer);
+}
+
+function resolveSelectionRoot(textLayerContainer: HTMLElement): HTMLElement | null {
+  return textLayerContainer.closest(AUTO_SELECTION_ROOT_SELECTOR);
+}
+
+function resolveSelectionPageIndex(
+  textLayerContainer: HTMLElement,
+  explicitPageIndex?: number,
+): number | null {
+  if (typeof explicitPageIndex === "number" && Number.isInteger(explicitPageIndex)) {
+    return explicitPageIndex;
+  }
+
+  const pageElement = textLayerContainer.closest(PAGE_NUMBER_SELECTOR);
+  const pageNumber = Number.parseInt(pageElement?.getAttribute("data-page-number") ?? "", 10);
+
+  if (!Number.isFinite(pageNumber) || pageNumber <= 0) {
+    return null;
+  }
+
+  return pageNumber - 1;
+}
+
+function getOrCreateTextSelectionManager(selectionRoot: HTMLElement): TextSelectionManager {
+  const attachedManager = getAttachedTextSelectionManager(selectionRoot);
+  if (attachedManager) {
+    return attachedManager;
+  }
+
+  const existingAutoManager = autoSelectionManagers.get(selectionRoot);
+  if (existingAutoManager) {
+    return existingAutoManager;
+  }
+
+  const manager = createTextSelectionManager({
+    container: selectionRoot,
+  });
+  manager.enable();
+
+  autoSelectionManagers.set(selectionRoot, manager);
+  trackedAutoSelectionRoots.add(selectionRoot);
+  ensureAutoSelectionCleanupObserver();
+
+  return manager;
+}
+
+function ensureAutoSelectionCleanupObserver(): void {
+  if (
+    autoSelectionCleanupObserver ||
+    typeof MutationObserver === "undefined" ||
+    typeof document === "undefined" ||
+    !document.body
+  ) {
+    return;
+  }
+
+  autoSelectionCleanupObserver = new MutationObserver(() => {
+    for (const selectionRoot of Array.from(trackedAutoSelectionRoots)) {
+      if (selectionRoot.isConnected) {
+        continue;
+      }
+
+      autoSelectionManagers.get(selectionRoot)?.dispose();
+      autoSelectionManagers.delete(selectionRoot);
+      trackedAutoSelectionRoots.delete(selectionRoot);
+    }
+
+    if (trackedAutoSelectionRoots.size === 0) {
+      autoSelectionCleanupObserver?.disconnect();
+      autoSelectionCleanupObserver = null;
+    }
+  });
+
+  autoSelectionCleanupObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
 }
