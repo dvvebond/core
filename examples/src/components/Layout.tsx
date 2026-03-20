@@ -20,6 +20,8 @@ const navigation: NavSection[] = [
     title: "Components",
     items: [
       { path: "/react-pdf-viewer", label: "ReactPDFViewer" },
+      { path: "/wrapper-parity", label: "Wrapper Parity" },
+      { path: "/pending-review-parity", label: "Pending Review Parity" },
       { path: "/viewer-variants", label: "Viewer Variants" },
     ],
   },

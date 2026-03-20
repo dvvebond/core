@@ -475,16 +475,45 @@ function maybeRegisterTextLayerWithSelectionManager(
     return;
   }
 
+  if (!tryRegisterTextLayerWithSelectionManager(options)) {
+    scheduleDeferredTextLayerRegistration(options);
+  }
+}
+
+function tryRegisterTextLayerWithSelectionManager(
+  options: TextSelectionRegistrationOptions,
+): boolean {
   const selectionRoot =
     options.selectionContainer ?? resolveSelectionRoot(options.textLayerContainer);
   const pageIndex = resolveSelectionPageIndex(options.textLayerContainer, options.pageIndex);
 
   if (!selectionRoot || pageIndex === null) {
-    return;
+    return false;
   }
 
   const manager = getOrCreateTextSelectionManager(selectionRoot);
   manager.registerTextLayer(pageIndex, options.textLayerContainer);
+  return true;
+}
+
+function scheduleDeferredTextLayerRegistration(
+  options: TextSelectionRegistrationOptions,
+  attempt = 0,
+): void {
+  if (attempt >= 12) {
+    return;
+  }
+
+  const schedule =
+    typeof window !== "undefined" && typeof window.requestAnimationFrame === "function"
+      ? (callback: () => void) => window.requestAnimationFrame(callback)
+      : (callback: () => void) => setTimeout(callback, 16);
+
+  schedule(() => {
+    if (!tryRegisterTextLayerWithSelectionManager(options)) {
+      scheduleDeferredTextLayerRegistration(options, attempt + 1);
+    }
+  });
 }
 
 function resolveSelectionRoot(textLayerContainer: HTMLElement): HTMLElement | null {

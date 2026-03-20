@@ -4,11 +4,13 @@ import { Layout } from "./components/Layout";
 import { AzureIntegrationExample } from "./examples/AzureIntegrationExample";
 import { HighlightingExample } from "./examples/HighlightingExample";
 import { InteractiveExample } from "./examples/InteractiveExample";
+import { PendingReviewParityExample } from "./examples/PendingReviewParityExample";
 import { PerformanceExample } from "./examples/PerformanceExample";
 import { ReactPDFViewerExample } from "./examples/ReactPDFViewerExample";
 import { SearchExample } from "./examples/SearchExample";
 import { ViewerVariantsExample } from "./examples/ViewerVariantsExample";
 import { ViewportExample } from "./examples/ViewportExample";
+import { WrapperParityExample } from "./examples/WrapperParityExample";
 
 export default function App() {
   return (
@@ -16,6 +18,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/react-pdf-viewer" replace />} />
         <Route path="/react-pdf-viewer" element={<ReactPDFViewerExample />} />
+        <Route path="/wrapper-parity" element={<WrapperParityExample />} />
+        <Route path="/pending-review-parity" element={<PendingReviewParityExample />} />
         <Route path="/azure-integration" element={<AzureIntegrationExample />} />
         <Route path="/search" element={<SearchExample />} />
         <Route path="/highlighting" element={<HighlightingExample />} />

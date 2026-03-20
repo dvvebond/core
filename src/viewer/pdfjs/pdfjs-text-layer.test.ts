@@ -136,6 +136,7 @@ describe("buildPDFJSTextLayer", () => {
 
   afterEach(() => {
     delete (globalThis as Record<string, unknown>).document;
+    vi.useRealTimers();
   });
 
   it("auto-registers built text layers with a shared selection manager for react-pdf roots", async () => {
@@ -199,5 +200,45 @@ describe("buildPDFJSTextLayer", () => {
 
     expect(createTextSelectionManagerMock).not.toHaveBeenCalled();
     expect(attachedManager.registerTextLayer).toHaveBeenCalledWith(0, textLayer);
+  });
+
+  it("registers after the text layer is appended later by a wrapper component", async () => {
+    vi.useFakeTimers();
+
+    const manager = {
+      enable: vi.fn(),
+      registerTextLayer: vi.fn(),
+    };
+
+    getAttachedTextSelectionManagerMock.mockReturnValue(null);
+    createTextSelectionManagerMock.mockReturnValue(manager);
+
+    const documentRoot = new MockElement("div");
+    documentRoot.className = "react-pdf__Document";
+    const pageRoot = new MockElement("div");
+    pageRoot.setAttribute("data-page-number", "2");
+    const textLayer = new MockElement("div");
+
+    (document as unknown as { body: MockElement }).body.appendChild(documentRoot);
+    documentRoot.appendChild(pageRoot);
+
+    await buildPDFJSTextLayer({} as never, {
+      container: textLayer as unknown as HTMLElement,
+      viewport: {
+        scale: 1,
+        convertToViewportPoint: (x: number, y: number) => [x, y],
+      } as never,
+    });
+
+    expect(manager.registerTextLayer).not.toHaveBeenCalled();
+
+    pageRoot.appendChild(textLayer);
+    await vi.runAllTimersAsync();
+
+    expect(createTextSelectionManagerMock).toHaveBeenCalledWith({
+      container: documentRoot,
+    });
+    expect(manager.enable).toHaveBeenCalledOnce();
+    expect(manager.registerTextLayer).toHaveBeenCalledWith(1, textLayer);
   });
 });
